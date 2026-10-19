@@ -127,7 +127,7 @@ export function PropertiesPanel() {
 
   return (
     <aside className="pointer-events-auto absolute bottom-24 right-4 top-[76px] flex w-[312px] anim-slide-left" data-testid="properties-panel">
-      <div className="glass flex w-full flex-col overflow-hidden rounded-2xl">
+      <div className="glass flex w-full flex-col overflow-hidden rounded-2xl" data-ui-panel>
         <header className="flex items-center gap-3 px-4 pb-3 pt-4">
           <Orb type={body.type} size={40} />
           <div className="min-w-0 flex-1">

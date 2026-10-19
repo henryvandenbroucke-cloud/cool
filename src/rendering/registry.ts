@@ -6,6 +6,9 @@ export const surfaceMeshes = new Map<string, THREE.Object3D>();
 /** Impact direction per body in its local (surface) frame, for the molten-crust glow. */
 export const impactDirs = new Map<string, THREE.Vector3>();
 
+/** Relative size of the last impact per body (impactor radius / body radius), scales the molten wound. */
+export const impactSizes = new Map<string, number>();
+
 /** Temporary photon-ring flare per black hole (0..1), decays in the black-hole visual. */
 export const flares = new Map<string, number>();
 

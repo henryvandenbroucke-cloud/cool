@@ -30,6 +30,8 @@ export function LabelsOverlay() {
   const showLabels = useSettings((s) => s.showLabels);
   const labelRefs = useRef(new Map<string, HTMLDivElement>());
   const selRef = useRef<HTMLDivElement>(null);
+  const circleRef = useRef<HTMLDivElement>(null);
+  const bracketRef = useRef<HTMLDivElement>(null);
   const hoverRef = useRef<HTMLDivElement>(null);
   const parentCache = useRef(new Map<string, { id: string | null; t: number }>());
 
@@ -37,7 +39,18 @@ export function LabelsOverlay() {
 
   useEffect(() => {
     const placed: Rect[] = [];
+    let panels: Rect[] = [];
+    let panelsAt = 0;
     const update = (entries: ReadonlyMap<string, OverlayEntry>) => {
+      // UI panels are re-measured a few times per second; labels never draw underneath them.
+      const now0 = performance.now();
+      if (now0 - panelsAt > 300) {
+        panelsAt = now0;
+        panels = Array.from(document.querySelectorAll<HTMLElement>('[data-ui-panel]')).map((el) => {
+          const r = el.getBoundingClientRect();
+          return { x: r.left - 6, y: r.top - 6, w: r.width + 12, h: r.height + 12 };
+        });
+      }
       const world = useWorld.getState();
       const placing = useUI.getState().tool === 'place';
       const now = performance.now();
@@ -63,7 +76,7 @@ export function LabelsOverlay() {
           if (show) {
             const w = el.offsetWidth || 60;
             const rect = { x: e.x + Math.max(e.r, 3) + 8, y: e.y - 9, w, h: 18 };
-            if (!isSel && placed.some((p) => overlaps(p, rect))) show = false;
+            if ((!isSel && placed.some((p) => overlaps(p, rect))) || panels.some((p) => overlaps(p, rect))) show = false;
             else {
               placed.push(rect);
               el.style.transform = `translate3d(${rect.x}px, ${rect.y}px, 0)`;
@@ -76,11 +89,15 @@ export function LabelsOverlay() {
       const sel = world.selectedId ? entries.get(world.selectedId) : undefined;
       if (selRef.current) {
         if (sel && sel.visible) {
-          const d = Math.max(sel.r * 2 + 14, 26);
+          const big = sel.r > 34;
+          const d = big ? sel.r * 2 + 34 : Math.max(sel.r * 2 + 14, 26);
           selRef.current.style.opacity = '1';
           selRef.current.style.transform = `translate3d(${sel.x - d / 2}px, ${sel.y - d / 2}px, 0)`;
           selRef.current.style.width = `${d}px`;
           selRef.current.style.height = `${d}px`;
+          // Small bodies get a ring; large ones get corner brackets that don't cover the surface.
+          if (circleRef.current) circleRef.current.style.display = big ? 'none' : 'block';
+          if (bracketRef.current) bracketRef.current.style.display = big ? 'block' : 'none';
         } else selRef.current.style.opacity = '0';
       }
       const hov = world.hoveredId && world.hoveredId !== world.selectedId ? entries.get(world.hoveredId) : undefined;
@@ -101,8 +118,15 @@ export function LabelsOverlay() {
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden data-testid="labels-overlay">
       <div ref={hoverRef} className="absolute left-0 top-0 rounded-full border border-white/35 opacity-0 transition-opacity duration-150" />
       <div ref={selRef} className="absolute left-0 top-0 opacity-0 transition-opacity duration-200">
-        <div className="absolute inset-0 rounded-full border-[1.5px] border-cyan/90 shadow-[0_0_16px_rgb(65_217_255/0.55),inset_0_0_10px_rgb(65_217_255/0.25)]" />
-        <div className="absolute -inset-[5px] rounded-full border border-dashed border-cyan/40" style={{ animation: 'gm-spin 9s linear infinite' }} />
+        <div ref={circleRef} className="absolute inset-0">
+          <div className="absolute inset-0 rounded-full border-[1.5px] border-cyan/90 shadow-[0_0_14px_rgb(65_217_255/0.5)]" />
+          <div className="absolute -inset-[5px] rounded-full border border-dashed border-cyan/40" style={{ animation: 'gm-spin 9s linear infinite' }} />
+        </div>
+        <div ref={bracketRef} className="absolute inset-0" style={{ display: 'none' }}>
+          {(['left-0 top-0 border-l-[1.5px] border-t-[1.5px] rounded-tl-lg', 'right-0 top-0 border-r-[1.5px] border-t-[1.5px] rounded-tr-lg', 'left-0 bottom-0 border-l-[1.5px] border-b-[1.5px] rounded-bl-lg', 'right-0 bottom-0 border-r-[1.5px] border-b-[1.5px] rounded-br-lg'] as const).map((c) => (
+            <div key={c} className={`absolute h-5 w-5 border-cyan/85 drop-shadow-[0_0_6px_rgb(65_217_255/0.7)] ${c}`} />
+          ))}
+        </div>
       </div>
       {bodies.map((b) => (
         <div

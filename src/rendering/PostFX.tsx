@@ -16,7 +16,7 @@ export function PostFX() {
   const reduced = useSettings((s) => s.reducedEffects);
   const profile = QUALITY[quality];
   const bloom = useRef<BloomEffect>(null);
-  const baseIntensity = 0.95;
+  const baseIntensity = 0.8;
 
   useFrame(() => {
     if (bloom.current) bloom.current.intensity = baseIntensity + Math.min(2.2, frame.bloomBoost);
@@ -32,7 +32,7 @@ export function PostFX() {
   // Separate composers (by key) rather than conditional children keeps the effect chain stable.
   return useBloom ? (
     <EffectComposer key={`bloom-${samples}-${profile.bloomLevels}`} multisampling={samples} enableNormalPass={false}>
-      <Bloom ref={bloom} mipmapBlur levels={profile.bloomLevels} intensity={baseIntensity} luminanceThreshold={0.82} luminanceSmoothing={0.35} radius={0.78} />
+      <Bloom ref={bloom} mipmapBlur levels={profile.bloomLevels} intensity={baseIntensity} luminanceThreshold={0.9} luminanceSmoothing={0.3} radius={0.62} />
       {tail[0]}
       {tail[1]}
       {tail[2]}

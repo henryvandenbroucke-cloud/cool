@@ -16,7 +16,25 @@ export const lightUniforms = {
   uLightStrength: { value: new Array<number>(MAX_LIGHTS).fill(0) },
   uLightCount: { value: 0 },
   uRenderScale: { value: RENDER_SCALE },
+  uExposure: { value: 1 },
 };
+
+/**
+ * Auto-exposure: like a camera adapting to a dim scene, lit surfaces near the
+ * point the camera looks at are brought up toward a pleasing level (bounded,
+ * and eased over ~1 s so it never pops). Emissive stars are unaffected.
+ */
+export function updateExposure(focus: THREE.Vector3, delta: number): void {
+  const n = lightUniforms.uLightCount.value;
+  let e = 0;
+  for (let i = 0; i < n; i++) {
+    const d = lightUniforms.uLightPos.value[i].distanceTo(focus) / RENDER_SCALE;
+    e += 1 - Math.exp((-1.5 * lightUniforms.uLightStrength.value[i]) / Math.sqrt(d + 0.06));
+  }
+  const target = n === 0 ? 1 : THREE.MathUtils.clamp(0.82 / Math.max(e, 0.05), 1, 2.4);
+  const k = 1 - Math.exp(-delta * 2.5);
+  lightUniforms.uExposure.value += (target - lightUniforms.uExposure.value) * k;
+}
 
 const candidates: { id: string; power: number; color: [number, number, number] }[] = [];
 

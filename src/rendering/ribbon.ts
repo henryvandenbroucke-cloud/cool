@@ -22,6 +22,9 @@ export class Ribbon {
   readonly material: THREE.ShaderMaterial;
   readonly points: Float32Array;
   count = 0;
+  /** True when committed points changed since the last rebuild. */
+  dirty = false;
+  private headDistAtRebuild = 0;
   private geometry: THREE.BufferGeometry;
   private pos: THREE.BufferAttribute;
   private prev: THREE.BufferAttribute;
@@ -69,6 +72,8 @@ export class Ribbon {
         uOpacity: { value: style.opacity },
         uDash: { value: style.dash ?? 0 },
         uTime: { value: 0 },
+        uHeadClear: { value: 0 },
+        uHeadShift: { value: 0 },
       },
       transparent: true,
       depthWrite: false,
@@ -95,6 +100,26 @@ export class Ribbon {
     this.points[1] = y;
     this.points[2] = z;
     this.count = n + 1;
+  }
+
+  /**
+   * Commits a sample directly behind the live head (index 0 stays the head).
+   * Used for trails whose head follows the rendered body every frame.
+   */
+  commit(x: number, y: number, z: number): void {
+    if (this.count === 0) {
+      this.push(x, y, z);
+      this.push(x, y, z);
+      this.dirty = true;
+      return;
+    }
+    const n = Math.min(this.count, this.capacity - 1);
+    this.points.copyWithin(6, 3, n * 3);
+    this.points[3] = x;
+    this.points[4] = y;
+    this.points[5] = z;
+    this.count = Math.min(this.capacity, Math.max(2, n + 1));
+    this.dirty = true;
   }
 
   /** Moves the head point without committing a new sample. */
@@ -155,6 +180,9 @@ export class Ribbon {
       attr.needsUpdate = true;
     }
     this.geometry.setDrawRange(0, Math.max(0, (n - 1) * 6));
+    this.headDistAtRebuild = n > 1 ? Math.hypot(p[0] - p[3], p[1] - p[4], p[2] - p[5]) : 0;
+    this.material.uniforms.uHeadShift.value = 0;
+    this.dirty = false;
   }
 
   /** Cheap per-frame update of just the head vertices. */
@@ -184,6 +212,8 @@ export class Ribbon {
     this.prev.clearUpdateRanges();
     this.prev.addUpdateRange(0, 12);
     this.prev.needsUpdate = true;
+    const d01 = Math.hypot(p[0] - p[3], p[1] - p[4], p[2] - p[5]);
+    this.material.uniforms.uHeadShift.value = d01 - this.headDistAtRebuild;
   }
 
   dispose(): void {

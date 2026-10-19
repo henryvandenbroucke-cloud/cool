@@ -26,7 +26,7 @@ export function Toolbar({ onScreenshot }: { onScreenshot: () => void }) {
 
   return (
     <div className="pointer-events-auto absolute left-4 top-1/2 -translate-y-1/2 anim-slide-right" data-testid="toolbar">
-      <div className="glass flex flex-col items-center gap-1 rounded-2xl p-1.5">
+      <div className="glass flex flex-col items-center gap-1 rounded-2xl p-1.5" data-ui-panel>
         <IconButton icon={MousePointer2} label="Select & inspect" shortcut="1" active={tool === 'select'} onClick={() => setTool('select')} tooltipSide="right" testId="tool-select" />
         <div className="my-1 h-px w-6 bg-white/10" />
         {TOOLS.map((t) => (

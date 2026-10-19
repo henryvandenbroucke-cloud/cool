@@ -6,6 +6,7 @@ uniform vec3 uLightColor[MAX_LIGHTS];
 uniform float uLightStrength[MAX_LIGHTS];
 uniform int uLightCount;
 uniform float uRenderScale;
+uniform float uExposure;
 
 // Stylised irradiance: real starlight falls off with 1/d², which would leave
 // the outer planets invisible. We use a gentler 1/√d curve that saturates near
@@ -13,7 +14,7 @@ uniform float uRenderScale;
 float irradiance(int i, float distScene) {
   float d = distScene / uRenderScale;
   float e = uLightStrength[i] / sqrt(d + 0.06);
-  return 1.0 - exp(-1.5 * e);
+  return (1.0 - exp(-1.5 * e)) * uExposure;
 }
 `;
 

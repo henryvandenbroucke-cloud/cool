@@ -20,13 +20,24 @@ uniform float uViewport;
 varying float vT;
 varying float vKind;
 varying float vSeed;
+varying vec2 vDir;
+varying float vStretch;
+
+vec3 positionAt(float age, vec3 anchor) {
+  float drag = aKind > 1.5 ? 1.6 : (aKind > 0.5 ? 0.6 : 1.1);
+  float f = (1.0 - exp(-drag * age)) / drag;
+  return anchor + aStart + aVel * f;
+}
+
 void main() {
   float age = uTime - aParams.x;
   float life = aParams.y;
   float t = age / life;
   vT = t;
   vKind = aKind;
-  vSeed = fract(aParams.z * 91.7);
+  vSeed = fract(aParams.z * 91.7 + aStart.x * 13.1);
+  vDir = vec2(1.0, 0.0);
+  vStretch = 1.0;
   if (t < 0.0 || t > 1.0) {
     gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
     gl_PointSize = 0.0;
@@ -45,15 +56,23 @@ void main() {
     float ang = k * 9.0;
     p = anchor + (e1 * cos(ang) + e2 * sin(ang)) * r;
   } else {
-    float drag = aKind > 1.5 ? 1.6 : 0.9;
-    float f = (1.0 - exp(-drag * age)) / drag;
-    p = anchor + aStart + aVel * f;
+    p = positionAt(age, anchor);
   }
   vec4 mv = viewMatrix * vec4(p, 1.0);
-  gl_Position = projectionMatrix * mv;
-  float grow = aKind > 1.5 ? (1.0 + t * 3.0) : (1.0 - t * 0.6);
-  float px = aParams.z * grow * projectionMatrix[1][1] * uViewport * 0.5 / -mv.z;
-  gl_PointSize = clamp(px * uPixelRatio, 1.0, aKind > 1.5 ? 90.0 : 28.0);
+  vec4 clip = projectionMatrix * mv;
+  gl_Position = clip;
+  float grow = aKind > 1.5 ? (1.0 + t * 3.0) : (1.0 - t * 0.5);
+  float px = aParams.z * grow * projectionMatrix[1][1] * uViewport * 0.5 / max(-mv.z, 1e-6);
+  // Motion streak: stretch sparks along their projected velocity.
+  if (aKind < 1.5) {
+    vec3 p2 = aKind > 2.5 ? p : positionAt(age + 0.06, anchor);
+    vec4 c2 = projectionMatrix * viewMatrix * vec4(p2, 1.0);
+    vec2 sv = (c2.xy / c2.w - clip.xy / clip.w) * uViewport * 0.5;
+    float len = length(sv);
+    if (len > 1e-3) vDir = sv / len;
+    vStretch = clamp(1.0 + len / max(px, 1.0), 1.0, aKind > 0.5 ? 3.0 : 5.0);
+  }
+  gl_PointSize = clamp(px * uPixelRatio * vStretch, 1.5, aKind > 1.5 ? 96.0 : 48.0);
   #include <logdepthbuf_vertex>
 }
 `;
@@ -64,13 +83,15 @@ uniform float uIntensity;
 varying float vT;
 varying float vKind;
 varying float vSeed;
+varying vec2 vDir;
+varying float vStretch;
 
 vec3 cooling(float h) {
-  vec3 white = vec3(1.0, 0.95, 0.85);
-  vec3 yellow = vec3(1.0, 0.7, 0.25);
-  vec3 orange = vec3(1.0, 0.35, 0.06);
-  vec3 red = vec3(0.6, 0.08, 0.02);
-  vec3 ember = vec3(0.12, 0.02, 0.01);
+  vec3 white = vec3(1.0, 0.94, 0.82);
+  vec3 yellow = vec3(1.0, 0.68, 0.22);
+  vec3 orange = vec3(1.0, 0.33, 0.05);
+  vec3 red = vec3(0.55, 0.07, 0.02);
+  vec3 ember = vec3(0.1, 0.02, 0.01);
   if (h > 0.8) return mix(yellow, white, (h - 0.8) / 0.2);
   if (h > 0.55) return mix(orange, yellow, (h - 0.55) / 0.25);
   if (h > 0.3) return mix(red, orange, (h - 0.3) / 0.25);
@@ -79,22 +100,25 @@ vec3 cooling(float h) {
 
 void main() {
   vec2 c = gl_PointCoord * 2.0 - 1.0;
-  float d = dot(c, c);
+  c.y = -c.y;
+  // Rotate into the velocity frame and squash across it.
+  vec2 q = vec2(dot(c, vDir), dot(c, vec2(-vDir.y, vDir.x)) * vStretch);
+  float d = dot(q, q);
   if (d > 1.0) discard;
   float heat = 1.0 - vT;
   vec3 col;
   float a;
   if (vKind > 2.5) {
-    col = mix(vec3(1.0, 0.45, 0.1), vec3(1.0, 0.9, 0.7), heat) * 2.5;
+    col = mix(vec3(1.0, 0.42, 0.08), vec3(1.0, 0.88, 0.62), heat) * 2.4;
     a = exp(-d * 4.0) * smoothstep(0.0, 0.1, vT) * (1.0 - vT);
   } else if (vKind > 1.5) {
-    // Smoke / dust: dim, cool, broad.
-    col = mix(vec3(0.25, 0.12, 0.08), vec3(0.08, 0.07, 0.09), vT) * (0.5 + heat);
-    a = exp(-d * 2.0) * (1.0 - vT) * 0.35;
+    // Hot dust: dim, dark red, broad and short-lived.
+    col = mix(vec3(0.32, 0.08, 0.03), vec3(0.04, 0.03, 0.05), vT);
+    a = exp(-d * 2.4) * (1.0 - vT) * (1.0 - vT) * 0.32;
   } else {
-    float h = clamp(heat * (vKind > 0.5 ? 0.85 : 1.1) - vSeed * 0.15, 0.0, 1.0);
-    col = cooling(h) * (1.0 + h * h * 5.0);
-    a = exp(-d * 3.5) * smoothstep(1.0, 0.75, vT);
+    float h = clamp(heat * (vKind > 0.5 ? 0.85 : 1.15) - vSeed * 0.18, 0.0, 1.0);
+    col = cooling(h) * (1.0 + h * h * 4.0);
+    a = exp(-d * 3.2) * smoothstep(1.0, 0.7, vT);
   }
   gl_FragColor = vec4(col * a * uIntensity, 1.0);
   ${FRAGMENT_OUTRO}
@@ -121,11 +145,11 @@ uniform float uSeed;
 varying vec2 vLocal;
 void main() {
   float r = length(vLocal);
-  float ring = exp(-pow((r - 0.86) / 0.07, 2.0)) + exp(-pow((r - 0.7) / 0.18, 2.0)) * 0.25;
+  float ring = exp(-pow((r - 0.92) / 0.018, 2.0)) * 1.2 + exp(-pow((r - 0.84) / 0.07, 2.0)) * 0.14;
   float a = atan(vLocal.y, vLocal.x);
-  float n = 0.65 + 0.35 * fbm(vec3(cos(a) * 3.0, sin(a) * 3.0, uSeed + uT * 2.0), 4);
-  float fade = pow(1.0 - uT, 1.8);
-  vec3 col = mix(uColor, vec3(1.0, 0.95, 0.85), (1.0 - uT) * 0.6) * ring * n * fade * 3.0;
+  float n = 0.55 + 0.45 * (fbm(vec3(cos(a) * 4.0, sin(a) * 4.0, uSeed + uT * 2.0), 4) * 0.5 + 0.5);
+  float fade = pow(1.0 - uT, 2.2);
+  vec3 col = mix(uColor, vec3(1.0, 0.9, 0.75), pow(1.0 - uT, 3.0) * 0.7) * ring * n * fade * 2.6;
   gl_FragColor = vec4(col, 1.0);
   ${FRAGMENT_OUTRO}
 }

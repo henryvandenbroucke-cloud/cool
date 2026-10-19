@@ -50,6 +50,7 @@ export function PredictionLine() {
     ribbon.material.uniforms.uOffset.value.set(0, 0, 0);
     if (rel) ribbon.material.uniforms.uOffset.value.copy(rel);
     ribbon.material.uniforms.uTime.value = frame.time;
+    ribbon.material.uniforms.uHeadClear.value = frame.radii.get(body.id) ?? 0;
   });
 
   return null;

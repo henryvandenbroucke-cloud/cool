@@ -15,6 +15,7 @@ attribute float aDist;
 uniform vec2 uResolution;
 uniform float uWidth;
 uniform vec3 uOffset;
+uniform float uHeadShift;
 varying float vAge;
 varying float vSide;
 varying float vDist;
@@ -42,7 +43,8 @@ void main() {
   gl_Position = cur;
   vAge = aAge;
   vSide = aSide;
-  vDist = aDist;
+  // Distances were measured when the ribbon was last rebuilt; the live head has moved since.
+  vDist = aAge > 0.0 ? aDist + uHeadShift : 0.0;
   #include <logdepthbuf_vertex>
 }
 `;
@@ -54,13 +56,20 @@ uniform vec3 uHeadColor;
 uniform float uOpacity;
 uniform float uDash;
 uniform float uTime;
+uniform float uHeadClear;
 varying float vAge;
 varying float vSide;
 varying float vDist;
 void main() {
-  float edge = 1.0 - smoothstep(0.45, 1.0, abs(vSide));
-  float fade = pow(1.0 - vAge, 1.8);
-  float a = edge * fade * uOpacity;
+  // Bright core plus a soft glow skirt.
+  float s = abs(vSide);
+  float core = 1.0 - smoothstep(0.22, 0.5, s);
+  float glow = exp(-s * 3.2) * 0.32 * (1.0 - smoothstep(0.8, 1.0, s));
+  float edge = core + glow * (1.0 - core);
+  float fade = pow(1.0 - vAge, 1.6);
+  // Keep the line off the body itself.
+  float clear = uHeadClear > 0.0 ? smoothstep(uHeadClear * 0.9, uHeadClear * 2.6, vDist) : 1.0;
+  float a = edge * fade * clear * uOpacity;
   if (uDash > 0.0) {
     float m = fract(vDist / uDash - uTime * 0.6);
     a *= smoothstep(0.0, 0.08, m) * smoothstep(0.62, 0.5, m);

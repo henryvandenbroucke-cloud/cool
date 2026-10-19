@@ -69,10 +69,10 @@ function bakeSky(renderer: THREE.WebGLRenderer, faceSize: number, starCount: num
     const d = randomDirection(rng, 0.55).multiplyScalar(90);
     positions.set([d.x, d.y, d.z], i * 3);
     const c = starColor(rng);
-    const mag = Math.pow(rng(), 6); // most stars faint, few bright
-    const b = 0.08 + mag * 1.6;
+    const mag = Math.pow(rng(), 7); // most stars faint, a few bright
+    const b = 0.05 + mag * 1.5;
     colors.set([Math.pow(c[0], 2.2) * b, Math.pow(c[1], 2.2) * b, Math.pow(c[2], 2.2) * b], i * 3);
-    sizes[i] = (1.1 + mag * 2.2) * sizeScale;
+    sizes[i] = Math.max(1, (1.0 + mag * 1.6) * sizeScale);
   }
   const starGeo = new THREE.BufferGeometry();
   starGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -133,21 +133,25 @@ export function Background() {
     const col = new Float32Array(n * 3);
     const size = new Float32Array(n);
     const phase = new Float32Array(n);
+    const spike = new Float32Array(n);
     for (let i = 0; i < n; i++) {
       const d = randomDirection(rng, 0.35).multiplyScalar(50000);
       pos.set([d.x, d.y, d.z], i * 3);
       const c = starColor(rng);
-      const m = Math.pow(rng(), 4);
-      const b = 0.35 + m * 2.4;
+      const m = Math.pow(rng(), 5);
+      const isSpike = rng() < 0.006;
+      const b = isSpike ? 2.2 + rng() * 1.5 : 0.18 + m * 1.6;
       col.set([Math.pow(c[0], 2.2) * b, Math.pow(c[1], 2.2) * b, Math.pow(c[2], 2.2) * b], i * 3);
-      size[i] = 1.4 + m * 3.6 + (rng() < 0.012 ? 2 : 0);
+      size[i] = isSpike ? 1.6 + rng() * 0.8 : 0.8 + m * 1.1;
       phase[i] = rng();
+      spike[i] = isSpike ? 1 : 0;
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     g.setAttribute('aColor', new THREE.BufferAttribute(col, 3));
     g.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
     g.setAttribute('aPhase', new THREE.BufferAttribute(phase, 1));
+    g.setAttribute('aSpike', new THREE.BufferAttribute(spike, 1));
     const m = new THREE.ShaderMaterial({
       vertexShader: BRIGHT_STARS_VERTEX,
       fragmentShader: BRIGHT_STARS_FRAGMENT,

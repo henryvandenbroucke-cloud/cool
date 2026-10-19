@@ -55,6 +55,8 @@ export class SimulationEngine {
   lastAdvance: AdvanceResult = { steps: 0, substeps: 0, limited: false, simulated: 0 };
   /** Fraction of a fixed step accumulated but not yet simulated (0..1), for render interpolation. */
   alpha = 0;
+  /** Optional observer called after every fixed step (e.g. dense trail sampling). */
+  onStep: ((engine: SimulationEngine) => void) | null = null;
 
   private index = new Map<string, SimBody>();
   private accumulator = 0;
@@ -332,6 +334,7 @@ export class SimulationEngine {
       if (this.contacts.length > 0) this.resolveContacts();
     }
     this.totalSteps++;
+    this.onStep?.(this);
     return n;
   }
 

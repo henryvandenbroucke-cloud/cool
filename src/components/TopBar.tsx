@@ -43,7 +43,7 @@ export function TopBar() {
   return (
     <>
       <div className="pointer-events-auto absolute left-4 top-4 flex items-center gap-2 anim-slide-right" data-testid="top-left">
-        <div className="glass flex items-center gap-4 rounded-2xl py-2 pl-3 pr-2">
+        <div className="glass flex items-center gap-4 rounded-2xl py-2 pl-3 pr-2" data-ui-panel>
           <Logo />
           <div className="h-6 w-px bg-white/10" />
           <button
@@ -67,7 +67,7 @@ export function TopBar() {
       </div>
 
       <div className="pointer-events-auto absolute right-4 top-4 anim-slide-left" data-testid="top-right">
-        <div className="glass flex items-center gap-0.5 rounded-2xl p-1.5">
+        <div className="glass flex items-center gap-0.5 rounded-2xl p-1.5" data-ui-panel>
           <IconButton icon={Sparkles} label="Universes & presets" onClick={() => openDialog('presets')} testId="open-presets" />
           <IconButton icon={Download} label="Save universe" shortcut="Ctrl S" onClick={() => openDialog('save')} testId="open-save" />
           <IconButton icon={FolderOpen} label="Load universe" onClick={() => openDialog('load')} testId="open-load" />

@@ -100,8 +100,9 @@ Surface terran(vec3 d, vec3 p) {
   col *= 0.85 + 0.3 * fbm(p * 18.0, 3);
   // Ocean: deep to shallow turquoise near coasts.
   float depth = clamp((sea - h) / 0.35, 0.0, 1.0);
-  vec3 shallow = mix(uC0, vec3(0.05, 0.38, 0.45), 0.55);
-  vec3 ocean = mix(shallow, uC0 * 0.7, smoothstep(0.0, 0.6, depth));
+  vec3 shallow = mix(uC0, vec3(0.06, 0.42, 0.52), 0.6);
+  vec3 ocean = mix(shallow, uC0 * 0.62, smoothstep(0.0, 0.5, depth));
+  ocean *= 0.92 + 0.12 * fbm(p * 9.0 + 3.0, 3);
   col = mix(ocean, col, land);
   // Polar ice.
   float ice = smoothstep(0.80, 0.86, lat + fbm(p * 4.0 + 5.0, 4) * 0.08);
@@ -112,13 +113,20 @@ Surface terran(vec3 d, vec3 p) {
   // City lights: clustered on habitable land, densest near coasts.
   float coast = smoothstep(0.12, 0.0, h - sea);
   float habitable = land * (1.0 - ice) * smoothstep(0.75, 0.55, lat) * (1.0 - smoothstep(0.5, 0.8, elev)) * (1.0 - desertBand * 0.8);
-  float clusters = smoothstep(0.15, 0.6, fbm(p * 5.0 + 71.0, 4) + coast * 0.35);
-  float sparkle = smoothstep(0.62, 0.9, snoise(p * 90.0) * 0.5 + 0.5 + snoise(p * 31.0) * 0.25);
-  s.emissive = uCity * habitable * clusters * (0.35 + sparkle);
-  // Clouds: warped fbm with a band of storms near the equator.
-  vec3 cq = p * 1.6 + 1.4 * vec3(fbm(p * 1.3 + 50.0, 4), fbm(p * 1.3 + 60.0, 4), fbm(p * 1.3 + 70.0, 4));
-  float c = fbm(cq * 2.2, 6) + 0.15 * exp(-pow(d.y / 0.12, 2.0)) - 0.12 * exp(-pow((lat - 0.3) / 0.1, 2.0));
-  s.cloud = smoothstep(0.55 - uClouds * 0.75, 0.95 - uClouds * 0.5, c * 0.5 + 0.5);
+  float clusters = smoothstep(0.25, 0.7, fbm(p * 4.0 + 71.0, 4) + coast * 0.3);
+  float sparkle = smoothstep(0.6, 0.95, snoise(p * 140.0) * 0.5 + 0.5 + snoise(p * 45.0) * 0.3);
+  s.emissive = uCity * habitable * clusters * (0.15 + sparkle * 0.85);
+  // Clouds: domain-warped systems with real circulation bands — a cloudy
+  // equator (ITCZ), clear subtropics and stormy mid-latitudes.
+  vec3 cq = p * 1.3 + 1.7 * vec3(fbm(p * 1.1 + 50.0, 4), fbm(p * 1.1 + 60.0, 4), fbm(p * 1.1 + 70.0, 4));
+  // Winds shear clouds into streaks along lines of latitude.
+  vec3 sq = vec3(cq.x * 0.75, cq.y * 2.1, cq.z * 0.75);
+  float c = fbm(sq * 2.3, 7) * 0.75 + fbm(cq * 4.0 + 11.0, 4) * 0.25;
+  float bands = 0.2 * exp(-pow(d.y / 0.09, 2.0)) - 0.26 * exp(-pow((lat - 0.3) / 0.09, 2.0)) + 0.14 * exp(-pow((lat - 0.62) / 0.12, 2.0));
+  float thr = mix(0.32, -0.32, uClouds);
+  float cloud = smoothstep(thr, thr + 0.28, c + bands);
+  cloud *= 0.72 + 0.28 * (fbm(p * 16.0 + 9.0, 3) * 0.5 + 0.5);
+  s.cloud = cloud;
   return s;
 }
 

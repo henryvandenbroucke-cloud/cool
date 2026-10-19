@@ -1,4 +1,5 @@
 import { Component, useCallback, useEffect, useState, type ReactNode } from 'react';
+import { Info } from 'lucide-react';
 import { Scene } from './Scene';
 import { engine, useWorld } from '../stores/worldStore';
 import { useUI } from '../stores/uiStore';
@@ -59,12 +60,24 @@ function Fallback({ title, detail }: { title: string; detail: string }) {
 
 function Disclosure() {
   const text = useWorld((s) => s.disclosure);
-  if (!text) return null;
+  const [open, setOpen] = useState(false);
   return (
-    <div className="pointer-events-auto absolute left-4 top-[74px] max-w-[360px] anim-fade" data-testid="disclosure">
-      <p className="text-[10.5px] leading-snug text-faint">
-        <span className="text-mute">Newtonian N-body gravity.</span> {text}
-      </p>
+    <div className="pointer-events-auto absolute left-4 top-[78px] anim-fade" data-testid="disclosure" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 rounded-full bg-[#0b1020]/60 px-2.5 py-1 text-[10.5px] text-mute ring-1 ring-white/[0.07] backdrop-blur-md transition-colors hover:text-ink"
+        aria-expanded={open}
+      >
+        <Info size={11} className="text-cyan" />
+        Newtonian N-body gravity
+        {text && <span className="text-faint">· notes</span>}
+      </button>
+      {open && text && (
+        <div className="glass mt-2 w-[330px] rounded-xl px-3.5 py-3 text-[11.5px] leading-relaxed text-mute anim-rise" data-ui-panel>
+          {text}
+        </div>
+      )}
     </div>
   );
 }
@@ -139,7 +152,7 @@ export function App() {
         {!hideUI && (
           <>
             <TopBar />
-            {showPanels && <Disclosure />}
+            {showPanels && tool !== 'place' && <Disclosure />}
             <Toolbar onScreenshot={screenshotMode} />
             {tool === 'place' && <PlacementPanel />}
             {showPanels && <PropertiesPanel />}

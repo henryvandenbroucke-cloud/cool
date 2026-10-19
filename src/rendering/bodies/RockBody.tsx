@@ -38,7 +38,6 @@ export function RockBody({ body, version }: { body: SimBody; version: number }) 
           uHeat: { value: 0 },
           uSeed: { value: 0 },
           uIcy: { value: 0 },
-          uHighlight: { value: 0 },
         },
       }),
     [],
@@ -123,7 +122,6 @@ export function RockBody({ body, version }: { body: SimBody; version: number }) 
     rock.current.scale.setScalar(r);
     if (body.heat > 0) body.heat = Math.max(0, body.heat - frame.delta * 0.07);
     material.uniforms.uHeat.value = body.heat;
-    material.uniforms.uHighlight.value = world.selectedId === body.id ? 1 : world.hoveredId === body.id ? 0.5 : 0;
 
     if (comet && ionTail.current && dustTail.current && coma.current) {
       // Tail points away from the brightest nearby star; length grows as the comet nears it.

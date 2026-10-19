@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 import { DEBRIS_FRAGMENT, DEBRIS_VERTEX, GHOST_FRAGMENT, SHOCK_FRAGMENT, SHOCK_VERTEX } from '../shaders/fx';
-import { BILLBOARD_VERTEX, GLOW_FRAGMENT } from '../shaders/star';
+import { BILLBOARD_VERTEX, FLASH_FRAGMENT } from '../shaders/star';
 import { SIMPLE_VERTEX } from '../shaders/planet';
 import { RENDER_SCALE } from '../simulation/constants';
 import type { SimEvent } from '../simulation/types';
 import { frame } from '../rendering/frameState';
-import { flares, impactDirs, surfaceMeshes } from '../rendering/registry';
+import { flares, impactDirs, impactSizes, surfaceMeshes } from '../rendering/registry';
 import { unitQuad, unitSphere } from '../rendering/geometries';
 import { hexToLinear } from '../utils/color';
 
@@ -104,8 +104,8 @@ export class VFXSystem {
     for (let i = 0; i < 10; i++) {
       const m = new THREE.ShaderMaterial({
         vertexShader: BILLBOARD_VERTEX,
-        fragmentShader: GLOW_FRAGMENT,
-        uniforms: { uSize: { value: 1 }, uColor: { value: new THREE.Vector3(1, 0.8, 0.5) }, uIntensity: { value: 0 }, uFalloff: { value: 3.5 } },
+        fragmentShader: FLASH_FRAGMENT,
+        uniforms: { uSize: { value: 1 }, uColor: { value: new THREE.Vector3(1, 0.7, 0.35) }, uIntensity: { value: 0 } },
         transparent: true,
         depthWrite: false,
         depthTest: false,
@@ -295,15 +295,16 @@ export class VFXSystem {
         mesh.getWorldQuaternion(tmpQ).invert();
         impactDirs.set(ev.survivorId, normal.clone().applyQuaternion(tmpQ));
       }
+      impactSizes.set(ev.survivorId, Math.min(1.6, Math.max(0.25, (ev.victimScale / Math.max(ev.scale, 1e-12)) * 1.4 + Math.min(0.6, ev.intensity * 0.4))));
     }
 
     const c0 = hexToLinear(ev.colors[0]);
-    const count = Math.round(budget * (shatter ? 0.35 : 0.08 + 0.1 * Math.min(1.5, energy)));
+    const count = Math.round(budget * (shatter ? 0.4 : 0.14 + 0.12 * Math.min(1.5, energy)));
     const tangentA = new THREE.Vector3().crossVectors(normal, Math.abs(normal.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0)).normalize();
     const tangentB = new THREE.Vector3().crossVectors(normal, tangentA);
     this.emit(count, anchor, (i, start, vel) => {
       const r = Math.random();
-      const kind = r < 0.58 ? 0 : r < 0.86 ? 1 : 2;
+      const kind = r < 0.62 ? 0 : r < 0.92 ? 1 : 2;
       start.copy(offset);
       if (shatter) {
         randomUnit(vel);
@@ -319,17 +320,15 @@ export class VFXSystem {
         randomUnit(vel).addScaledVector(normal, 1.4).normalize();
         vel.multiplyScalar(scale * (0.4 + Math.pow(Math.random(), 0.7) * 3.4) * (0.6 + energy * 0.4));
       }
-      const life = kind === 2 ? 3 + Math.random() * 3 : 1.4 + Math.random() * (kind === 1 ? 3.5 : 2.2);
-      const size = scale * (kind === 2 ? 0.5 + Math.random() * 0.8 : kind === 1 ? 0.06 + Math.random() * 0.14 : 0.03 + Math.random() * 0.09);
+      const life = kind === 2 ? 2 + Math.random() * 2 : kind === 1 ? 2.5 + Math.random() * 4 : 0.8 + Math.random() * 1.8;
+      const size = scale * (kind === 2 ? 0.4 + Math.random() * 0.6 : kind === 1 ? 0.05 + Math.random() * 0.12 : 0.025 + Math.random() * 0.06);
       return { life, size, kind };
     });
 
-    const flashColor: [number, number, number] = [1, 0.85 + 0.1 * c0[1], 0.6];
-    this.flash(anchor, offset, scale * (shatter ? 9 : 4 + 3 * Math.min(1.5, energy)), flashColor, shatter ? 1.4 : 0.9);
-    this.shock(anchor, offset, normal, scale * (shatter ? 14 : 6 + 5 * Math.min(1.5, energy)), [1, 0.5, 0.18], 1.8);
-    if (shatter || energy > 1) {
-      this.shock(anchor, offset, tangentA, scale * 10, [1, 0.7, 0.4], 2.2, 0.08);
-    }
+    const flashColor: [number, number, number] = [1, 0.62 + 0.15 * c0[1], 0.3];
+    this.flash(anchor, offset, scale * (shatter ? 7 : 2.6 + 1.6 * Math.min(1.5, energy)), flashColor, shatter ? 1.1 : 0.65);
+    this.shock(anchor, offset, normal, scale * (shatter ? 9 : 3 + 1.8 * Math.min(1.5, energy)), [1, 0.45, 0.14], shatter ? 1.6 : 1.15);
+    if (shatter) this.shock(anchor, offset, tangentA, scale * 6.5, [1, 0.62, 0.3], 1.8, 0.08);
     frame.bloomBoost += shatter ? 1.6 : 0.4 + 0.5 * Math.min(1.5, energy);
     return Math.min(1, (shatter ? 1 : 0.35 + 0.4 * Math.min(1.5, energy)) * closeness);
   }
@@ -367,10 +366,10 @@ export class VFXSystem {
         f.mesh.visible = false;
         continue;
       }
-      const attack = Math.min(1, t / 0.06);
+      const attack = Math.min(1, t / 0.05);
       f.mesh.position.copy(this.anchors[f.anchor].pos).add(f.offset);
-      f.material.uniforms.uSize.value = f.size * (0.7 + t * 0.8);
-      f.material.uniforms.uIntensity.value = attack * Math.pow(1 - t, 2.4) * 5;
+      f.material.uniforms.uSize.value = f.size * (0.6 + Math.sqrt(t) * 0.9);
+      f.material.uniforms.uIntensity.value = attack * Math.pow(1 - t, 2.6) * 2.4;
     }
     for (const s of this.shocks) {
       if (!s.active) continue;

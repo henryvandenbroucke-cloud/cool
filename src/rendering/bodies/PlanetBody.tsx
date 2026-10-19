@@ -12,7 +12,7 @@ import { ringGeometry, unitSphere } from '../geometries';
 import { QUALITY } from '../quality';
 import { useSettings } from '../../stores/settingsStore';
 import { useWorld } from '../../stores/worldStore';
-import { impactDirs, surfaceMeshes } from '../registry';
+import { impactDirs, impactSizes, surfaceMeshes } from '../registry';
 import { hexToLinear } from '../../utils/color';
 
 const DEG = Math.PI / 180;
@@ -28,6 +28,7 @@ export function PlanetBody({ body, version }: { body: SimBody; version: number }
   const surface = useRef<THREE.Mesh>(null);
   const atmo = useRef<THREE.Mesh>(null);
   const ring = useRef<THREE.Mesh>(null);
+  const bumpFactor = useRef(0);
 
   const a = body.appearance;
   const texSize = body.kind === 'moon' || body.kind === 'asteroid' ? Math.max(512, profile.planetTexture / 2) : profile.planetTexture;
@@ -60,7 +61,7 @@ export function PlanetBody({ body, version }: { body: SimBody; version: number }
           uImpactDir: { value: new THREE.Vector3(0, 1, 0) },
           uBump: { value: 0 },
           uDetail: { value: 1 },
-          uHighlight: { value: 0 },
+          uImpactSize: { value: 0.6 },
           uHasRings: { value: 0 },
           uRingNormal: { value: new THREE.Vector3(0, 1, 0) },
           uCenter: { value: new THREE.Vector3() },
@@ -133,7 +134,8 @@ export function PlanetBody({ body, version }: { body: SimBody; version: number }
     u.uAtmoDensity.value = a.atmosphereColor ? a.atmosphereDensity : 0;
     u.uCity.value = a.cityLights ? 1 : 0;
     u.uLava.value = a.style === 'volcanic' ? 1 : 0;
-    u.uBump.value = isGas || a.style === 'venus' ? 0 : a.style === 'terran' ? 0.012 : 0.02;
+    // Bump height is relative to the body radius (applied per frame).
+    bumpFactor.current = isGas || a.style === 'venus' ? 0 : a.style === 'terran' ? 0.006 : a.style === 'moon' || a.style === 'mercury' ? 0.009 : 0.008;
     const au = atmoMaterial.uniforms;
     au.uAtmoColor.value.set(...hexToLinear(a.atmosphereColor ?? '#000000'));
     au.uAtmoDensity.value = a.atmosphereColor ? a.atmosphereDensity : 0;
@@ -158,7 +160,7 @@ export function PlanetBody({ body, version }: { body: SimBody; version: number }
     };
   }, [body.id]);
 
-  const atmoScale = a.atmosphereColor ? 1 + (isGas ? 0.035 : 0.03 + 0.05 * a.atmosphereDensity) : 0;
+  const atmoScale = a.atmosphereColor ? 1 + (isGas ? 0.024 : 0.016 + 0.032 * a.atmosphereDensity) : 0;
 
   useFrame(() => {
     const pos = frame.positions.get(body.id);
@@ -177,7 +179,8 @@ export function PlanetBody({ body, version }: { body: SimBody; version: number }
     u.uHeat.value = body.heat;
     const dir = impactDirs.get(body.id);
     if (dir) u.uImpactDir.value.copy(dir);
-    u.uHighlight.value = world.selectedId === body.id ? 1 : world.hoveredId === body.id ? 0.5 : 0;
+    u.uImpactSize.value = impactSizes.get(body.id) ?? 0.6;
+    u.uBump.value = bumpFactor.current * r;
     u.uCenter.value.copy(pos);
     u.uDetail.value = 1;
     if (atmo.current) {

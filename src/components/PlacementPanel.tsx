@@ -31,7 +31,7 @@ export function PlacementPanel() {
 
   return (
     <div className="pointer-events-auto absolute left-[76px] top-1/2 w-[300px] -translate-y-1/2 anim-slide-right" data-testid="placement-panel">
-      <div className="glass rounded-2xl p-4">
+      <div className="glass rounded-2xl p-4" data-ui-panel>
         <div className="label-caps mb-2.5">Create</div>
         <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${Math.min(4, Math.max(1, types.length))}, minmax(0, 1fr))` }}>
           {types.map((t) => {

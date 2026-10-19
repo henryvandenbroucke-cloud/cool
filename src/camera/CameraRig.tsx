@@ -8,6 +8,7 @@ import { useUI } from '../stores/uiStore';
 import { frame } from '../rendering/frameState';
 import { RENDER_SCALE } from '../simulation/constants';
 import { centerOfMass } from '../simulation/physics';
+import { updateExposure } from '../rendering/lighting';
 
 interface Transition {
   start: number;
@@ -235,6 +236,7 @@ export function CameraRig() {
       }
     }
 
+    updateExposure(c.target, frame.delta);
     const focusR = r.followId ? frame.radii.get(r.followId) ?? 0 : 0;
     c.minDistance = focusR > 0 ? focusR * 1.25 : 0.0005;
     c.maxDistance = 2e5;

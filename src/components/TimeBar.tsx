@@ -25,7 +25,7 @@ export function TimeBar() {
 
   return (
     <div className="pointer-events-auto absolute bottom-5 left-1/2 -translate-x-1/2 anim-rise" data-testid="timebar">
-      <div className="glass flex items-center gap-1.5 rounded-2xl px-2 py-1.5">
+      <div className="glass flex items-center gap-1.5 rounded-2xl px-2 py-1.5" data-ui-panel>
         <IconButton icon={Undo2} label="Undo" shortcut="Ctrl Z" disabled={!canUndo} onClick={undo} size="sm" tooltipSide="top" testId="undo" />
         <IconButton icon={Redo2} label="Redo" shortcut="Ctrl ⇧ Z" disabled={!canRedo} onClick={redo} size="sm" tooltipSide="top" testId="redo" />
         <div className="mx-1 h-6 w-px bg-white/10" />

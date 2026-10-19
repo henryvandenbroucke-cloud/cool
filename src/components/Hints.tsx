@@ -51,7 +51,7 @@ export function Hints() {
   ];
   return (
     <div className="pointer-events-auto absolute bottom-24 left-4 w-[268px] anim-rise" data-testid="hints" style={{ animationDelay: '0.4s' }}>
-      <div className="glass rounded-2xl p-4">
+      <div className="glass rounded-2xl p-4" data-ui-panel>
         <div className="mb-2 flex items-center justify-between">
           <span className="label-caps">Getting started</span>
           <button type="button" aria-label="Dismiss hints" onClick={close} className="rounded-md p-1 text-mute transition-colors hover:bg-white/10 hover:text-ink">

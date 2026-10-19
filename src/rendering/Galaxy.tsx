@@ -42,33 +42,43 @@ export function Galaxy({ centerId }: { centerId: string | null }) {
       let h: number;
       let kind = 0;
       let temp: number;
-      let bright = 0.5 + rng() * 0.6;
-      if (roll < 0.18) {
-        // Bulge.
-        r = Math.abs(gauss(rng)) * 0.11;
+      let bright = 0.35 + rng() * 0.45;
+      if (roll < 0.16) {
+        // Bulge: old, warm, centrally concentrated.
+        r = Math.abs(gauss(rng)) * 0.1;
         a = rng() * Math.PI * 2;
-        h = gauss(rng) * 0.05 * (1 - r * 3);
-        temp = 3800 + rng() * 1500;
-        bright *= 1.5;
+        h = gauss(rng) * 0.045 * (1 - Math.min(1, r * 4));
+        temp = 3600 + rng() * 1400;
+        bright *= 1.4;
+      } else if (roll < 0.42) {
+        // Smooth inter-arm disk of older stars.
+        r = Math.min(1.1, -Math.log(1 - rng() * 0.97) * 0.32 + 0.05);
+        a = rng() * Math.PI * 2;
+        h = gauss(rng) * 0.014;
+        temp = 4200 + rng() * 2200;
+        bright *= 0.6;
       } else {
-        r = Math.min(1.15, -Math.log(1 - rng() * 0.98) * 0.3 + 0.04);
+        // Logarithmic spiral arms: young blue stars and pink HII regions.
+        r = Math.min(1.15, -Math.log(1 - rng() * 0.98) * 0.3 + 0.06);
         const arm = Math.floor(rng() * arms);
-        a = (arm / arms) * Math.PI * 2 + Math.log(r / 0.05) / Math.tan(pitch) * 0.5 + gauss(rng) * (0.18 + 0.15 * r);
-        h = gauss(rng) * 0.012;
-        const inArm = Math.exp(-Math.pow(gauss(rng) * 0.6, 2));
-        temp = rng() < 0.55 * inArm ? 8000 + rng() * 14000 : 4200 + rng() * 2500;
-        if (rng() < 0.03 * inArm && r > 0.15) {
+        const spread = gauss(rng) * (0.06 + 0.05 * r);
+        a = (arm / arms) * Math.PI * 2 + (Math.log(r / 0.05) / Math.tan(pitch)) * 0.5 + spread;
+        h = gauss(rng) * 0.01;
+        const core = Math.exp(-Math.pow(spread / 0.05, 2));
+        temp = rng() < 0.65 ? 8500 + rng() * 15000 : 5200 + rng() * 2400;
+        if (rng() < 0.05 * core && r > 0.12) {
           kind = 1;
-          bright *= 1.8;
-        } else if (rng() < 0.01 && r > 0.1) {
+          bright *= 2.2;
+        } else if (rng() < 0.012 && r > 0.1) {
           kind = 2;
-          bright *= 0.12;
+          bright *= 0.14;
         }
+        bright *= 0.8 + core * 0.6;
       }
       orbit.set([r, a, h, kind], i * 4);
       let c = blackbodyRGB(temp);
-      if (kind === 1) c = [1.0, 0.35, 0.6];
-      if (kind === 2) c = [0.55, 0.45, 0.9];
+      if (kind === 1) c = [1.0, 0.32, 0.58];
+      if (kind === 2) c = [0.5, 0.42, 0.9];
       color.set([Math.pow(c[0], 2.2) * bright, Math.pow(c[1], 2.2) * bright, Math.pow(c[2], 2.2) * bright], i * 3);
     }
     const g = new THREE.BufferGeometry();
@@ -86,7 +96,7 @@ export function Galaxy({ centerId }: { centerId: string | null }) {
     const glowMat = new THREE.ShaderMaterial({
       vertexShader: BILLBOARD_VERTEX,
       fragmentShader: GLOW_FRAGMENT,
-      uniforms: { uSize: { value: GALAXY_RADIUS_AU * RENDER_SCALE * 0.35 }, uColor: { value: new THREE.Vector3(1, 0.72, 0.42) }, uIntensity: { value: 0.5 }, uFalloff: { value: 4 } },
+      uniforms: { uSize: { value: GALAXY_RADIUS_AU * RENDER_SCALE * 0.3 }, uColor: { value: new THREE.Vector3(1, 0.72, 0.42) }, uIntensity: { value: 0.32 }, uFalloff: { value: 5 } },
       transparent: true,
       depthWrite: false,
       blending: THREE.AdditiveBlending,

@@ -45,8 +45,8 @@ export function BlackHoleBody({ body }: { body: SimBody; version: number }) {
         uOuter: { value: DISK_OUTER },
         uHole: { value: 1 },
         uTime: { value: 0 },
-        uIntensity: { value: 3.2 },
-        uBeta: { value: 0.42 },
+        uIntensity: { value: 2.3 },
+        uBeta: { value: 0.45 },
         uFlare: { value: 0 },
       },
       transparent: true,
@@ -62,7 +62,7 @@ export function BlackHoleBody({ body }: { body: SimBody; version: number }) {
         uRatio: { value: 2.8 },
         uNormalView: { value: new THREE.Vector3(0, 1, 0) },
         uTime: { value: 0 },
-        uIntensity: { value: 2.6 },
+        uIntensity: { value: 1.15 },
         uFlare: { value: 0 },
         uSpin: { value: spin },
       },
@@ -76,8 +76,8 @@ export function BlackHoleBody({ body }: { body: SimBody; version: number }) {
       uniforms: {
         uSize: { value: 1 },
         uColor: { value: new THREE.Vector3(1.0, 0.42, 0.12) },
-        uIntensity: { value: 0.35 },
-        uFalloff: { value: 4.5 },
+        uIntensity: { value: 0.16 },
+        uFalloff: { value: 5.5 },
       },
       transparent: true,
       depthWrite: false,
@@ -103,7 +103,7 @@ export function BlackHoleBody({ body }: { body: SimBody; version: number }) {
         uHole: { value: 1 },
         uScale: { value: 1 },
         uSpin: { value: spin },
-        uIntensity: { value: 1.6 },
+        uIntensity: { value: 0.8 },
       },
       transparent: true,
       depthWrite: false,
@@ -113,7 +113,7 @@ export function BlackHoleBody({ body }: { body: SimBody; version: number }) {
   }, [spin]);
 
   const infallGeometry = useMemo(() => {
-    const n = profile.diskParticles;
+    const n = Math.round(profile.diskParticles * 0.4);
     const rng = mulberry32(body.appearance.seed + 3);
     const params = new Float32Array(n * 4);
     for (let i = 0; i < n; i++) {
@@ -170,7 +170,7 @@ export function BlackHoleBody({ body }: { body: SimBody; version: number }) {
     const dist = camera.position.distanceTo(pos);
     const glowSize = Math.max(r * 16, dist * 0.04);
     mats.glowMat.uniforms.uSize.value = glowSize;
-    mats.glowMat.uniforms.uIntensity.value = 0.32 + flare * 0.8;
+    mats.glowMat.uniforms.uIntensity.value = 0.16 + flare * 0.8;
 
     if (lens.current) {
       const sky = skyRef.texture;
@@ -184,7 +184,7 @@ export function BlackHoleBody({ body }: { body: SimBody; version: number }) {
     iu.uTime.value = t;
     iu.uHole.value = r;
     iu.uScale.value = size.height * dpr * 0.5 * (camera as THREE.PerspectiveCamera).projectionMatrix.elements[5] * 0.035;
-    iu.uIntensity.value = 1.4 + flare * 2;
+    iu.uIntensity.value = 0.75 + flare * 2;
     if (particles.current) particles.current.visible = !reduced;
   });
 

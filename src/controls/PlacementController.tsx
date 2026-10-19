@@ -382,6 +382,7 @@ export function PlacementController() {
       }
     }
     v.path.material.uniforms.uTime.value = frame.time;
+    v.path.material.uniforms.uHeadClear.value = Math.max(effR, minR);
   });
 
   return null;

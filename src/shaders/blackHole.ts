@@ -59,20 +59,28 @@ void main() {
   float t = (r - uInner) / (uOuter - uInner);
   if (t < 0.0 || t > 1.0) discard;
   float phi = atan(vLocal.y, vLocal.x);
-  // Keplerian differential rotation: inner gas laps the outer gas.
-  float omega = 2.2 / pow(rn, 1.5);
-  float a1 = phi + uTime * omega;
-  float a2 = phi + uTime * omega * 0.82 + 1.7;
   float lr = log(rn);
-  float s1 = fbm(vec3(cos(a1) * 1.6, sin(a1) * 1.6, lr * 7.0), 5);
-  float s2 = fbm(vec3(cos(a2) * 3.4, sin(a2) * 3.4, lr * 16.0 + 4.0), 4);
-  float streaks = clamp(0.55 + s1 * 0.75 + s2 * 0.45, 0.0, 1.6);
-  float lanes = 0.7 + 0.3 * sin(lr * 38.0 + s1 * 4.0);
+  // Keplerian differential rotation (inner gas laps the outer gas) plus a
+  // logarithmic shear, which stretches every clump into a spiral filament.
+  float omega = 2.0 / pow(rn, 1.5);
+  float a1 = phi + uTime * omega + lr * 2.6;
+  float a2 = phi + uTime * omega * 0.9 + lr * 4.2 + 2.1;
+  // Clumps a few per revolution, sheared into arcs; the radial warp breaks up concentric banding.
+  vec3 q1 = vec3(cos(a1) * 2.6, sin(a1) * 2.6, lr * 4.0);
+  vec3 warp = vec3(fbm(q1 * 1.2 + 7.0, 3), fbm(q1 * 1.2 + 13.0, 3), fbm(q1 * 1.2 + 21.0, 3)) * 0.9;
+  float clumps = fbm(q1 + warp, 5) * 0.5 + 0.5;
+  vec3 q2 = vec3(cos(a2) * 5.0, sin(a2) * 5.0, lr * 9.0) + warp * 1.4;
+  // Fade fine radial detail when the disk is seen nearly edge-on (prevents moiré).
+  float aa = clamp(1.0 - fwidth(lr * 9.0) * 1.6, 0.0, 1.0);
+  float filaments = pow(1.0 - abs(snoise(q2)), 4.0) * aa;
+  float gas = clamp(0.2 + pow(clumps, 1.4) * 1.15 + filaments * 0.3, 0.0, 1.7);
 
-  float temp = clamp(pow(uInner / r, 0.9), 0.0, 1.0);
-  vec3 col = diskColor(temp * 0.92 + streaks * 0.08);
-  float profile = smoothstep(0.0, 0.035, t) * pow(1.0 - t, 1.3) * pow(uInner / r, 1.1);
-  float brightness = profile * streaks * lanes;
+  float temp = clamp(pow(uInner / r, 0.75), 0.0, 1.0);
+  vec3 col = diskColor(clamp(temp * 0.9 + (clumps - 0.5) * 0.18, 0.0, 1.0));
+  float profile = smoothstep(0.0, 0.05, t) * pow(1.0 - t, 1.6) * pow(uInner / r, 1.25);
+  // The hot innermost ring.
+  profile += exp(-pow(t / 0.035, 2.0)) * 0.6;
+  float brightness = profile * gas;
 
   // Relativistic Doppler beaming (approximate): gas moving toward the camera brightens and blue-shifts.
   vec3 V = normalize(cameraPosition - vWorldPos);
@@ -80,9 +88,9 @@ void main() {
   float cosA = dot(normalize(vTangent), V);
   float gamma = inversesqrt(1.0 - beta * beta);
   float D = 1.0 / (gamma * (1.0 - beta * cosA));
-  float beam = clamp(pow(D, 3.0), 0.12, 5.0);
-  col = mix(col, col * vec3(0.82, 0.95, 1.3), clamp(D - 1.0, 0.0, 1.0) * 0.6);
-  col = mix(col, col * vec3(1.15, 0.7, 0.45), clamp(1.0 - D, 0.0, 1.0) * 0.6);
+  float beam = clamp(pow(D, 3.0), 0.1, 5.0);
+  col = mix(col, col * vec3(0.85, 0.97, 1.25), clamp(D - 1.0, 0.0, 1.0) * 0.55);
+  col = mix(col, col * vec3(1.1, 0.62, 0.4), clamp(1.0 - D, 0.0, 1.0) * 0.7);
 
   vec3 outc = col * brightness * beam * uIntensity * (1.0 + uFlare * 2.0);
   gl_FragColor = vec4(outc, 1.0);
@@ -105,40 +113,36 @@ varying vec2 vUv;
 
 void main() {
   float rn = length(vUv) * uRatio;
-  if (rn < 0.98) discard;
+  if (rn < 0.99) discard;
   vec2 dir = normalize(vUv);
   float edgeOn = 1.0 - abs(uNormalView.z);
   vec2 nScr = length(uNormalView.xy) > 1e-3 ? normalize(uNormalView.xy) : vec2(0.0, 1.0);
   float side = dot(dir, nScr);
   float across = dot(dir, vec2(-nScr.y, nScr.x)) * uSpin;
 
-  // Photon ring: nested, progressively thinner rings.
-  float ring = exp(-pow((rn - 1.035) / 0.018, 2.0)) * 2.2 + exp(-pow((rn - 1.085) / 0.05, 2.0)) * 0.55;
+  // Photon ring: a razor-thin bright ring with a fainter secondary image.
+  float ring = exp(-pow((rn - 1.025) / 0.011, 2.0)) * 1.5 + exp(-pow((rn - 1.06) / 0.03, 2.0)) * 0.3;
 
-  // Lensed far-side disk: an arc over the top (edge-on) or a full ring (face-on).
-  float upper = smoothstep(-0.25, 0.75, side);
-  float lower = smoothstep(-0.25, 0.75, -side) * 0.35;
-  float weight = mix(0.5, upper + lower, edgeOn);
-  float band = smoothstep(1.1, 1.3, rn) * smoothstep(2.5, 1.45, rn);
+  // Lensed far side of the disk: an arc over the top when seen edge-on,
+  // a full ring when seen face-on, brighter on the approaching side.
+  float upper = smoothstep(-0.3, 0.8, side);
+  float lower = smoothstep(-0.3, 0.8, -side) * 0.3;
+  float weight = mix(0.42, upper + lower, edgeOn);
+  float band = smoothstep(1.08, 1.22, rn) * smoothstep(2.15, 1.35, rn);
   float phi = atan(vUv.y, vUv.x);
-  float a = phi + uTime * 1.1 * uSpin;
-  float streaks = 0.6 + 0.6 * fbm(vec3(cos(a) * 2.0, sin(a) * 2.0, rn * 4.0), 4);
-  float temp = clamp(1.4 - (rn - 1.1) * 0.75, 0.0, 1.0);
-  vec3 arc = diskColor(temp) * band * weight * streaks * (1.0 + 0.55 * across * edgeOn) * 1.4;
+  float a = phi + uTime * 1.2 * uSpin - log(rn) * 3.0;
+  float streaks = 0.55 + 0.75 * (fbm(vec3(cos(a) * 1.8, sin(a) * 1.8, rn * 3.5), 4) * 0.5 + 0.5);
+  float temp = clamp(0.74 - (rn - 1.1) * 0.45, 0.0, 1.0);
+  vec3 arc = diskColor(temp) * band * weight * streaks * (1.0 + 0.6 * across * edgeOn) * 0.7;
 
-  vec3 col = diskColor(0.95) * ring * (1.0 + uFlare * 3.0) + arc;
-  // Faint warm glow bleeding outward.
-  col += vec3(1.0, 0.45, 0.12) * exp(-(rn - 1.0) * 1.8) * 0.12;
-  float fade = smoothstep(uRatio, uRatio * 0.7, rn);
+  vec3 col = diskColor(0.86) * ring * (1.0 + uFlare * 3.0) + arc;
+  col += vec3(1.0, 0.42, 0.1) * exp(-(rn - 1.0) * 2.4) * 0.06;
+  float fade = smoothstep(uRatio, uRatio * 0.72, rn);
   gl_FragColor = vec4(col * uIntensity * fade, 1.0);
   ${FRAGMENT_OUTRO}
 }
 `;
 
-/**
- * Background lensing: re-samples the sky cubemap along bent rays using a
- * thin-lens mapping β = θ − θE²/θ (tapered to zero at the billboard edge).
- */
 export const LENS_VERTEX = /* glsl */ `
 ${LOGDEPTH_VERTEX_PARS}
 uniform float uSize;
@@ -216,7 +220,7 @@ void main() {
   gl_Position = projectionMatrix * mv;
   vHeat = clamp(1.6 / rn, 0.0, 1.0);
   vAlpha = smoothstep(0.0, 0.1, life) * smoothstep(1.0, 0.9, life);
-  gl_PointSize = clamp(uScale * uHole * (0.6 + fract(aParams.w * 7.3)) / -mv.z, 1.0, 7.0);
+  gl_PointSize = clamp(uScale * uHole * (0.35 + fract(aParams.w * 7.3) * 0.5) / -mv.z, 1.0, 4.0);
   #include <logdepthbuf_vertex>
 }
 `;
