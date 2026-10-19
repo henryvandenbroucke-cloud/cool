@@ -16,6 +16,7 @@ import { ScreenshotHelper } from '../rendering/Screenshot';
 import { CameraRig } from '../camera/CameraRig';
 import { PointerController } from '../controls/PointerController';
 import { PlacementController } from '../controls/PlacementController';
+import { overlay } from '../rendering/overlay';
 
 export function Scene() {
   const quality = useSettings((s) => s.quality);
@@ -35,7 +36,7 @@ export function Scene() {
         gl.setClearColor(new THREE.Color('#03050b'));
         gl.domElement.setAttribute('data-testid', 'universe-canvas');
         // Debug / automated-test handle.
-        (window as unknown as { __GODMODE_THREE__: unknown }).__GODMODE_THREE__ = { gl, scene, camera };
+        (window as unknown as { __GODMODE_THREE__: unknown }).__GODMODE_THREE__ = { gl, scene, camera, overlay };
       }}
     >
       <SimulationDriver />

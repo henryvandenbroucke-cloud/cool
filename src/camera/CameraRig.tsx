@@ -34,6 +34,41 @@ function dirFrom(elevationDeg: number, azimuthDeg: number): THREE.Vector3 {
   return new THREE.Vector3(Math.cos(el) * Math.sin(az), Math.sin(el), Math.cos(el) * Math.cos(az)).normalize();
 }
 
+/**
+ * A flattering view direction: from the sunlit side, about 40° off the light
+ * direction and slightly above the orbital plane, so the terminator shows.
+ * Stars and black holes keep the current direction (null).
+ */
+export function litViewDirection(id: string, current: THREE.Vector3): THREE.Vector3 | null {
+  const b = engine.getBody(id);
+  const p = frame.positions.get(id);
+  if (!b || !p || b.kind === 'star' || b.kind === 'blackHole') return null;
+  let best: THREE.Vector3 | null = null;
+  let bestScore = 0;
+  for (const s of engine.bodies) {
+    if (s.kind !== 'star' && s.kind !== 'blackHole') continue;
+    const sp = frame.positions.get(s.id);
+    if (!sp) continue;
+    const d2 = sp.distanceToSquared(p) + 1e-9;
+    const score = (s.kind === 'star' ? Math.max(s.luminosity, 1e-3) : 0.5) / d2;
+    if (score > bestScore) {
+      bestScore = score;
+      best = sp;
+    }
+  }
+  if (!best) return null;
+  const toLight = best.clone().sub(p);
+  toLight.y = 0;
+  if (toLight.lengthSq() < 1e-12) return null;
+  toLight.normalize();
+  // Pick the side (±40°) closest to where the camera already is, to keep the move short.
+  const sideA = toLight.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), 0.7);
+  const sideB = toLight.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), -0.7);
+  const dir = (current.dot(sideA) > current.dot(sideB) ? sideA : sideB).multiplyScalar(Math.cos(0.32));
+  dir.y = Math.sin(0.32);
+  return dir.normalize();
+}
+
 /** A comfortable viewing distance for a body (scene units). */
 export function viewDistanceFor(id: string): number {
   const b = engine.getBody(id);
@@ -128,7 +163,8 @@ export function CameraRig() {
     const ideal = viewDistanceFor(focusRequest.id);
     // Keep the user's zoom if it is already a sensible close-up.
     const toDist = current < ideal * 4 && current > ideal * 0.6 && c?.target.distanceTo(p) === 0 ? current : ideal;
-    startTransition(focusRequest.id, p, toDist, 1.5);
+    const curDir = c ? camera.position.clone().sub(c.target).normalize() : new THREE.Vector3(0, 0.3, 1);
+    startTransition(focusRequest.id, p, toDist, 1.6, litViewDirection(focusRequest.id, curDir));
     useUI.getState().setCinematic(false);
   }, [focusRequest]);
 
@@ -274,7 +310,8 @@ export function CameraRig() {
     if (!p) return;
     const el = 8 + Math.random() * 28;
     const az = Math.random() * 360;
-    startTransition(id, p, viewDistanceFor(id) * (1.1 + Math.random() * 1.6), 3.2, dirFrom(el, az));
+    const lit = litViewDirection(id, dirFrom(el, az));
+    startTransition(id, p, viewDistanceFor(id) * (1.1 + Math.random() * 1.6), 3.2, lit ?? dirFrom(el, az));
     r.cinematicNext = frame.time + 13;
   }
 

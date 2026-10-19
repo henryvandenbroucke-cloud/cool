@@ -12,8 +12,8 @@ import { flares, skyRef, surfaceMeshes } from '../registry';
 import { mulberry32 } from '../../utils/random';
 
 const DEG = Math.PI / 180;
-const DISK_INNER = 1.55;
-const DISK_OUTER = 7.5;
+export const DISK_INNER = 1.55;
+export const DISK_OUTER = 7.5;
 const tmpQ = new THREE.Quaternion();
 const tmpN = new THREE.Vector3();
 

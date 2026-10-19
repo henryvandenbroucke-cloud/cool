@@ -275,8 +275,7 @@ export class VFXSystem {
       g.size = victim;
       g.material.uniforms.uColor.value.set(...color);
       flares.set(ev.survivorId ?? '', 1);
-      this.flash(anchor, new THREE.Vector3(), big * 3, [1, 0.6, 0.25], 1.4);
-      frame.bloomBoost += 0.6;
+      frame.bloomBoost += 0.5;
       return 0.35 * closeness;
     }
 
