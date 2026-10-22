@@ -17,7 +17,7 @@ try {
 }
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = fs.readFileSync(new URL('../prism/index.html', import.meta.url), 'utf8');
 const dom = new JSDOM(html, {
   url: 'http://localhost:4173/',
   pretendToBeVisual: true,
@@ -132,7 +132,7 @@ const check = (name, pass, extra = '') => results.push({ name, pass, extra });
 doc.documentElement.classList.remove('no-js');
 doc.documentElement.classList.add('js');
 try {
-  await import(pathToFileURL(`${ROOT}/js/main.js`).href);
+  await import(pathToFileURL(`${ROOT}/prism/js/main.js`).href);
 } catch (error) {
   errors.push(`import failed: ${error.stack || error.message}`);
 }

@@ -27,6 +27,22 @@ const MIME = {
   '.txt': 'text/plain; charset=utf-8',
 };
 
+async function resolvePath(candidate) {
+  try {
+    const info = await stat(candidate);
+    if (info.isDirectory()) {
+      const index = join(candidate, 'index.html');
+      const indexInfo = await stat(index);
+      if (indexInfo.isFile()) return index;
+      return null;
+    }
+    if (info.isFile()) return candidate;
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 async function resolveFile(urlPath) {
   let pathname;
   try {
@@ -39,17 +55,16 @@ async function resolveFile(urlPath) {
   const candidate = normalize(join(ROOT, pathname));
   if (candidate !== ROOT && !candidate.startsWith(ROOT + sep)) return null;
 
-  try {
-    const info = await stat(candidate);
-    if (info.isDirectory()) {
-      const index = join(candidate, 'index.html');
-      const indexInfo = await stat(index);
-      if (indexInfo.isFile()) return index;
-      return null;
+  const file = await resolvePath(candidate);
+  if (file) return file;
+
+  // PRISM lives in prism/ now and its document still uses absolute /css, /js
+  // and /assets paths — anything not found at the root is looked up in there.
+  if (!pathname.startsWith('/prism')) {
+    const prismCandidate = normalize(join(ROOT, 'prism', pathname));
+    if (prismCandidate.startsWith(ROOT + sep)) {
+      return resolvePath(prismCandidate);
     }
-    if (info.isFile()) return candidate;
-  } catch {
-    return null;
   }
   return null;
 }
@@ -70,7 +85,7 @@ const server = createServer(async (req, res) => {
         'Cache-Control': 'no-store',
         'X-Content-Type-Options': 'nosniff',
       });
-      res.end('<!doctype html><meta charset="utf-8"><title>404</title><body style="background:#05060a;color:#f4f6fb;font:16px/1.6 system-ui;display:grid;place-items:center;height:100vh;margin:0"><div style="text-align:center"><h1 style="font-size:clamp(3rem,12vw,8rem);margin:0">404</h1><p>This light doesn\'t bend here.</p><a href="/" style="color:#7cf7d4">Return to PRISM</a></div>');
+      res.end('<!doctype html><meta charset="utf-8"><title>404</title><body style="background:#fff7ea;color:#3a4a58;font:16px/1.6 system-ui;display:grid;place-items:center;height:100vh;margin:0"><div style="text-align:center"><h1 style="font-size:clamp(3rem,12vw,8rem);margin:0">404</h1><p>Nothing but scales around here.</p><a href="/" style="color:#4e9a3c">Play the snake</a> · <a href="/prism" style="color:#5b6b7a">Visit PRISM</a></div>');
       return;
     }
     res.writeHead(404);
@@ -97,5 +112,5 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`PRISM → http://${HOST}:${PORT}`);
+  console.log(`cool → http://${HOST}:${PORT}  (snake at /, PRISM at /prism)`);
 });

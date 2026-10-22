@@ -39,10 +39,10 @@ class Ctx {
 }
 globalThis.Path2D = class { moveTo() {} lineTo() {} arc() {} };
 
-const { FlowScene } = await import('../js/scenes/flow.js');
-const { ClothScene } = await import('../js/scenes/cloth.js');
-const { OrbScene } = await import('../js/scenes/orb.js');
-const { GooScene } = await import('../js/scenes/goo.js');
+const { FlowScene } = await import('../prism/js/scenes/flow.js');
+const { ClothScene } = await import('../prism/js/scenes/cloth.js');
+const { OrbScene } = await import('../prism/js/scenes/orb.js');
+const { GooScene } = await import('../prism/js/scenes/goo.js');
 
 function rig(Ctor, w = 1440, h = 900) {
   const canvas = { width: 0, height: 0, style: {}, getContext: () => new Ctx(canvas) };

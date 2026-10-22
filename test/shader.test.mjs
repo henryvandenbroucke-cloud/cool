@@ -16,7 +16,7 @@ try {
   process.exit(0);
 }
 
-const source = fs.readFileSync(new URL('../js/webgl.js', import.meta.url), 'utf8');
+const source = fs.readFileSync(new URL('../prism/js/webgl.js', import.meta.url), 'utf8');
 const extract = (name) => {
   const match = source.match(new RegExp(`const ${name} = \`([\\s\\S]*?)\`;`));
   if (!match) throw new Error(`could not extract ${name} from js/webgl.js`);

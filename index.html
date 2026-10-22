@@ -1,273 +1,40 @@
 <!doctype html>
-<html lang="en" class="no-js">
+<html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>PRISM — an interactive study in six states of light</title>
-  <meta name="description" content="PRISM is a hand-built, interactive journey through six states of light: refraction, fluid, gravity, rhythm and spectrum. WebGL, Canvas 2D and Web Audio. No frameworks.">
-  <meta name="theme-color" content="#05060a">
-  <meta name="color-scheme" content="dark">
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="PRISM — an interactive study in six states of light">
-  <meta property="og:description" content="Six rooms of light and motion. Move your cursor. Scroll to refract.">
-  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
-  <link rel="preload" href="/assets/fonts/space-grotesk-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="/assets/fonts/instrument-serif-italic.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/css/style.css">
-  <script>
-    document.documentElement.classList.remove('no-js');
-    document.documentElement.classList.add('js');
-    // If the module never boots, lift the curtain anyway.
-    setTimeout(function () {
-      if (window.__PRISM_READY__) return;
-      document.documentElement.classList.remove('is-loading');
-      var l = document.getElementById('loader');
-      if (l) { l.classList.add('is-done'); l.hidden = true; }
-      document.body.classList.add('is-ready');
-      document.querySelectorAll('.scene__inner, [data-reveal], .display, .type-scene__top, .type-scene__foot')
-        .forEach(function (el) { el.classList.add('is-in'); });
-    }, 7000);
-  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>snake — don't get touched</title>
+  <meta name="description" content="A blank screen, a very motivated cartoon snake, and your cursor. Don't let it touch you — hide behind the boulders.">
+  <meta name="theme-color" content="#fff7ea">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🐍%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/css/snake.css">
 </head>
 <body>
-  <a class="skip-link" href="#main">Skip to the experience</a>
+  <canvas id="game" aria-label="A snake follows your cursor. Keep moving or hide behind boulders so it never touches you."></canvas>
 
-  <!-- Atmosphere layers -->
-  <canvas id="gl" aria-hidden="true"></canvas>
-  <div class="fallback-sky" aria-hidden="true"></div>
-  <div class="grain" aria-hidden="true"></div>
-  <div class="vignette" aria-hidden="true"></div>
-
-  <div class="cursor" id="cursor" aria-hidden="true">
-    <span class="cursor__dot"></span>
-    <span class="cursor__ring"></span>
-    <span class="cursor__label"></span>
+  <div class="hud" aria-hidden="true">
+    <span class="hud__time" id="time">0:00</span>
+    <span class="hud__best" id="best">best 0:00</span>
   </div>
 
-  <header class="hud">
-    <a class="brand" href="#aperture" data-cursor="link" data-cursor-label="top">
-      <span class="brand__mark" aria-hidden="true"></span>
-      <span class="brand__word">PRISM<sup>®</sup></span>
-    </a>
-    <p class="hud__note">An interactive study in six states of light</p>
-    <button class="sound" id="sound" type="button" aria-pressed="false" aria-label="Enable sound" data-cursor="link" data-cursor-label="listen">
-      <span class="sound__bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-      <span class="sound__label" id="sound-label">Sound off</span>
-    </button>
-  </header>
+  <p class="hint">
+    The snake follows your cursor — <strong>don't let it touch you.</strong><br>
+    Boulders block the snake, so hide behind them… but it'll come around.
+  </p>
 
-  <nav class="rail" aria-label="Chapters">
-    <div class="rail__pct" aria-hidden="true"><span id="rail-pct">00</span><span class="rail__pct-sign">%</span></div>
-    <ol class="rail__list">
-      <li><a href="#aperture" data-cursor="link"><span class="rail__num">00</span><span class="rail__name">Aperture</span></a></li>
-      <li><a href="#refraction" data-cursor="link"><span class="rail__num">01</span><span class="rail__name">Refraction</span></a></li>
-      <li><a href="#fluid" data-cursor="link"><span class="rail__num">02</span><span class="rail__name">Fluid</span></a></li>
-      <li><a href="#gravity" data-cursor="link"><span class="rail__num">03</span><span class="rail__name">Gravity</span></a></li>
-      <li><a href="#rhythm" data-cursor="link"><span class="rail__num">04</span><span class="rail__name">Rhythm</span></a></li>
-      <li><a href="#spectrum" data-cursor="link"><span class="rail__num">05</span><span class="rail__name">Spectrum</span></a></li>
-    </ol>
-  </nav>
-
-  <main id="main">
-    <!-- 00 — APERTURE -->
-    <section class="scene scene--hero" id="aperture" data-scene="0" data-name="Aperture" aria-labelledby="hero-title">
-      <div class="scene__inner hero">
-        <p class="eyebrow" data-reveal="fade" style="--d:1.05s">
-          <span class="eyebrow__spark" aria-hidden="true"></span>
-          A study in six states of light
-        </p>
-
-        <h1 class="hero__title" id="hero-title" aria-label="PRISM">
-          <span class="char" style="--i:0" aria-hidden="true" data-cursor="title">P</span><span class="char" style="--i:1" aria-hidden="true" data-cursor="title">R</span><span class="char" style="--i:2" aria-hidden="true" data-cursor="title">I</span><span class="char" style="--i:3" aria-hidden="true" data-cursor="title">S</span><span class="char" style="--i:4" aria-hidden="true" data-cursor="title">M</span>
-        </h1>
-
-        <div class="hero__foot">
-          <p class="hero__lede" data-reveal="up" style="--d:1.2s">
-            Six rooms of light and motion.<br>
-            <span class="serif">Scroll to refract.</span>
-          </p>
-          <p class="hero__meta" data-reveal="up" style="--d:1.32s">
-            WebGL · Canvas 2D · Web Audio<br>
-            Hand-built. No frameworks.
-          </p>
-          <a class="cue" href="#refraction" data-cursor="link" data-cursor-label="scroll" aria-label="Scroll to chapter one, Refraction">
-            <span class="cue__line" aria-hidden="true"><i></i></span>
-            <span class="cue__text">Begin the descent</span>
-          </a>
-        </div>
-      </div>
-      <p class="scene__ghost" aria-hidden="true">00</p>
-    </section>
-
-    <!-- 01 — REFRACTION -->
-    <section class="scene scene--flow" id="refraction" data-scene="1" data-name="Refraction" aria-labelledby="refraction-title">
-      <canvas class="scene__canvas" data-canvas="flow" aria-hidden="true"></canvas>
-      <div class="scene__inner split">
-        <div class="split__head">
-          <p class="chapter"><span class="chapter__num">01</span> <span class="chapter__name">Refraction</span></p>
-          <h2 class="display" id="refraction-title">
-            <span class="line"><span class="word">Light</span> <span class="word">bends.</span></span>
-            <span class="line"><span class="word">So</span> <span class="word serif">do you.</span></span>
-          </h2>
-        </div>
-        <div class="split__foot">
-          <p class="body-copy" data-reveal="up">
-            Every particle on this page is tracing a field it cannot see. Your cursor is a second field — a small gravity you carry around. Reach in, and the current learns your name.
-          </p>
-          <p class="hint" data-reveal="fade"><span class="hint__dot" aria-hidden="true"></span> Move your cursor</p>
-        </div>
-      </div>
-      <p class="scene__ghost" aria-hidden="true">01</p>
-    </section>
-
-    <!-- 02 — FLUID -->
-    <section class="scene scene--fluid" id="fluid" data-scene="2" data-name="Fluid" aria-labelledby="fluid-title">
-      <canvas class="scene__canvas scene__canvas--goo" data-canvas="goo" aria-hidden="true"></canvas>
-      <div class="scene__inner split split--fluid">
-        <div class="split__head">
-          <p class="chapter"><span class="chapter__num">02</span> <span class="chapter__name">Fluid</span></p>
-          <h2 class="display" id="fluid-title">
-            <span class="line"><span class="word">Everything</span> <span class="word">is</span> <span class="word">water,</span></span>
-            <span class="line"><span class="word serif">remembering</span> <span class="word serif">a shape.</span></span>
-          </h2>
-        </div>
-        <div class="split__foot">
-          <p class="body-copy" data-reveal="up">
-            No edges, only pressure. Colour pools where you leave it and drifts when you look away. Nothing here is ever quite still — least of all the part that looks like you.
-          </p>
-          <p class="hint" data-reveal="fade"><span class="hint__dot" aria-hidden="true"></span> Stir the surface</p>
-        </div>
-      </div>
-      <p class="scene__ghost" aria-hidden="true">02</p>
-    </section>
-
-    <!-- 03 — GRAVITY -->
-    <section class="scene scene--cloth" id="gravity" data-scene="3" data-name="Gravity" aria-labelledby="gravity-title">
-      <canvas class="scene__canvas" data-canvas="cloth" aria-hidden="true"></canvas>
-      <div class="scene__inner split">
-        <div class="split__head">
-          <p class="chapter"><span class="chapter__num">03</span> <span class="chapter__name">Gravity</span></p>
-          <h2 class="display" id="gravity-title">
-            <span class="line"><span class="word">Mass</span> <span class="word">tells</span> <span class="word">space</span></span>
-            <span class="line"><span class="word serif">how to bend.</span></span>
-          </h2>
-        </div>
-        <div class="split__foot">
-          <p class="body-copy" data-reveal="up">
-            A lattice holds the frame, strand over strand. You are a mass passing through it: it deforms around you, then remembers its shape — softly, and a little later than you'd expect.
-          </p>
-          <p class="hint" data-reveal="fade"><span class="hint__dot" aria-hidden="true"></span> Pull the lattice</p>
-        </div>
-      </div>
-      <p class="scene__ghost" aria-hidden="true">03</p>
-    </section>
-
-    <!-- 04 — RHYTHM -->
-    <section class="scene scene--type" id="rhythm" data-scene="4" data-name="Rhythm" aria-labelledby="rhythm-title">
-      <div class="scene__inner type-scene">
-        <div class="type-scene__top">
-          <p class="chapter"><span class="chapter__num">04</span> <span class="chapter__name">Rhythm</span></p>
-          <p class="type-scene__aside">The only chapter in daylight</p>
-        </div>
-
-        <h2 class="type-scene__title" id="rhythm-title">
-          <span class="line"><span class="word">Type</span> <span class="word">is</span> <span class="word">a</span> <span class="word">body</span></span>
-          <span class="line"><span class="word serif">in motion.</span></span>
-        </h2>
-
-        <div class="marquees" aria-hidden="true">
-          <div class="marquee" data-speed="34" data-dir="-1">
-            <div class="marquee__track">
-              <span>Motion</span><span class="outline">Motion</span><span>Motion</span><span class="outline">Motion</span>
-              <span>Motion</span><span class="outline">Motion</span><span>Motion</span><span class="outline">Motion</span>
-            </div>
-          </div>
-          <div class="marquee marquee--shift" data-speed="26" data-dir="1">
-            <div class="marquee__track">
-              <span class="outline">Emotion</span><span>Emotion</span><span class="outline">Emotion</span><span>Emotion</span>
-              <span class="outline">Emotion</span><span>Emotion</span><span class="outline">Emotion</span><span>Emotion</span>
-            </div>
-          </div>
-          <div class="marquee" data-speed="44" data-dir="-1">
-            <div class="marquee__track">
-              <span>Light</span><span class="outline serif">Light</span><span>Light</span><span class="outline serif">Light</span>
-              <span>Light</span><span class="outline serif">Light</span><span>Light</span><span class="outline serif">Light</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="type-scene__foot">
-          <p class="body-copy" data-reveal="up">
-            Letters have weight, tempo and breath. A line set tight is a held note; a line set loose is a rest. Hover a row and feel the rhythm stretch.
-          </p>
-          <div class="type-scene__tools" data-reveal="up">
-            <button class="scramble" id="scramble" type="button" data-words="MOTION,LIGHT,FORM,RHYTHM,PRISM" data-cursor="link" data-cursor-label="shuffle">
-              <span class="scramble__text">MOTION</span>
-            </button>
-            <div class="meter" aria-hidden="true">
-              <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
-            </div>
-          </div>
-        </div>
-      </div>
-      <p class="scene__ghost scene__ghost--ink" aria-hidden="true">04</p>
-    </section>
-
-    <!-- 05 — SPECTRUM -->
-    <section class="scene scene--orb" id="spectrum" data-scene="5" data-name="Spectrum" aria-labelledby="spectrum-title">
-      <canvas class="scene__canvas" data-canvas="orb" aria-hidden="true"></canvas>
-      <div class="scene__inner orb-scene">
-        <p class="chapter"><span class="chapter__num">05</span> <span class="chapter__name">Spectrum</span></p>
-        <h2 class="display display--center" id="spectrum-title">
-          <span class="line"><span class="word">You</span> <span class="word">are</span> <span class="word">the</span></span>
-          <span class="line"><span class="word serif">observer.</span></span>
-        </h2>
-        <p class="orb-scene__copy" data-reveal="up">
-          Six rooms, one light. Everything in them was waiting for someone to look.<br>
-          Move to scatter it. Be still to gather it.
-        </p>
-        <div class="orb-scene__actions" data-reveal="up">
-          <button class="pill" id="replay" type="button" data-cursor="link" data-cursor-label="again">
-            <span>Enter again</span>
-            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
-          </button>
-          <button class="pill pill--ghost" id="sound-2" type="button" data-cursor="link" data-cursor-label="listen">
-            <span>Sound toggle</span>
-          </button>
-        </div>
-      </div>
-      <p class="scene__ghost" aria-hidden="true">05</p>
-    </section>
-
-    <footer class="footer">
-      <div class="footer__col">
-        <p class="footer__label">PRISM</p>
-        <p>An interactive study in six states of light.<br>Made for the pleasure of the movement itself.</p>
-      </div>
-      <div class="footer__col">
-        <p class="footer__label">Built with</p>
-        <p>GLSL · Canvas 2D · Web Audio<br>Vanilla JS. 0 dependencies.</p>
-      </div>
-      <div class="footer__col footer__col--end">
-        <p class="footer__label">Colophon</p>
-        <p>Space Grotesk &amp; Instrument Serif<br><span id="year">2026</span> · Best with sound on.</p>
-      </div>
-    </footer>
-  </main>
-
-  <div class="loader" id="loader" role="status" aria-live="polite" aria-label="Loading the experience">
-    <div class="loader__mark" aria-hidden="true">PRISM</div>
-    <div class="loader__track" aria-hidden="true"><i id="loader-bar"></i></div>
-    <div class="loader__meta" aria-hidden="true">
-      <span>Opening the aperture</span>
-      <span class="loader__num"><span id="loader-num">00</span><span>%</span></span>
+  <div class="overlay" id="overlay" hidden>
+    <div class="card" role="dialog" aria-labelledby="over-title">
+      <div class="card__face" aria-hidden="true">🐍</div>
+      <h1 class="card__title" id="over-title">Ouch!</h1>
+      <p class="card__line">The snake got you.</p>
+      <p class="card__score">You survived <strong id="final-time">0:00</strong></p>
+      <p class="card__best" id="card-best">best 0:00</p>
+      <button class="card__btn" id="restart" type="button">try again</button>
     </div>
   </div>
 
-  <noscript>
-    <div class="noscript">PRISM is best experienced with JavaScript on. The words are all here; the light needs a little help.</div>
-  </noscript>
+  <a class="prism-link" href="/prism" aria-label="Visit PRISM, the other experiment in this repo">PRISM</a>
 
-  <script type="module" src="/js/main.js"></script>
+  <script type="module" src="/js/snake.js"></script>
 </body>
 </html>

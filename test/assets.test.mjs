@@ -17,11 +17,20 @@ const check = (name, pass, detail = '') => {
   if (!pass) problems.push(`${name}${detail ? ` — ${detail}` : ''}`);
 };
 
-const html = read('index.html');
+const html = read('prism/index.html');
 
 // 1. Local assets referenced by the document.
+//    Mirror of server.mjs: a reference resolves at the root, or — for paths
+//    that don't exist at the root — inside prism/ (where PRISM lives and its
+//    absolute /css, /js, /assets paths are aliased from).
+const resolves = (r) => {
+  const rel = r.slice(1);
+  if (exists(rel)) return true;
+  if (rel.startsWith('prism/')) return false;
+  return exists(`prism/${rel}`);
+};
 const refs = [...new Set([...html.matchAll(/(?:href|src)="(\/[^"]+)"/g)].map((m) => m[1]))];
-const missing = refs.filter((r) => !exists(r.slice(1)));
+const missing = refs.filter((r) => !resolves(r));
 check('every local asset reference resolves', missing.length === 0, missing.join(', '));
 
 // 2. Anchor targets.
@@ -47,7 +56,7 @@ const walk = (dir) => {
     else if (entry.name.endsWith('.js')) jsFiles.push(rel);
   }
 };
-walk('js');
+walk('prism/js');
 
 const unresolved = [];
 for (const file of jsFiles) {
@@ -60,7 +69,7 @@ for (const file of jsFiles) {
 check('every ES module import resolves', unresolved.length === 0, unresolved.join(', '));
 
 // 6. Canvas rooms have factories in main.js.
-const main = read('js/main.js');
+const main = read('prism/js/main.js');
 const canvases = [...new Set([...html.matchAll(/data-canvas="([^"]+)"/g)].map((m) => m[1]))];
 const missingFactories = canvases.filter((kind) => !new RegExp(`\\b${kind}:\\s*\\w+`).test(main));
 check('every canvas room has an engine', missingFactories.length === 0, missingFactories.join(', '));
@@ -68,8 +77,8 @@ check('four canvas rooms exist', canvases.length === 4, canvases.join(', '));
 
 // 7. Fonts are self-hosted and licensed.
 const fontFaces = [...html.matchAll(/data-canvas/g)]; // no-op, keeps intent explicit
-check('fonts are self-hosted', exists('assets/fonts/space-grotesk-var.woff2') && exists('assets/fonts/instrument-serif.woff2'));
-check('font licences ship with the fonts', exists('assets/fonts/OFL-SpaceGrotesk.txt') && exists('assets/fonts/OFL-InstrumentSerif.txt'));
+check('fonts are self-hosted', exists('prism/assets/fonts/space-grotesk-var.woff2') && exists('prism/assets/fonts/instrument-serif.woff2'));
+check('font licences ship with the fonts', exists('prism/assets/fonts/OFL-SpaceGrotesk.txt') && exists('prism/assets/fonts/OFL-InstrumentSerif.txt'));
 
 // 8. No remote origins (the site must work offline).
 const remote = [...html.matchAll(/(?:src|href)="https?:\/\/[^"]+"/g)].map((m) => m[0]);
