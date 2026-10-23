@@ -25,6 +25,11 @@ const MIME = {
   '.woff2': 'font/woff2',
   '.ico': 'image/x-icon',
   '.txt': 'text/plain; charset=utf-8',
+  '.glb': 'model/gltf-binary',
+  '.ogg': 'audio/ogg',
+  '.m4a': 'audio/mp4',
+  '.mp3': 'audio/mpeg',
+  '.md': 'text/markdown; charset=utf-8',
 };
 
 async function resolveFile(urlPath) {
@@ -70,7 +75,7 @@ const server = createServer(async (req, res) => {
         'Cache-Control': 'no-store',
         'X-Content-Type-Options': 'nosniff',
       });
-      res.end('<!doctype html><meta charset="utf-8"><title>404</title><body style="background:#05060a;color:#f4f6fb;font:16px/1.6 system-ui;display:grid;place-items:center;height:100vh;margin:0"><div style="text-align:center"><h1 style="font-size:clamp(3rem,12vw,8rem);margin:0">404</h1><p>This light doesn\'t bend here.</p><a href="/" style="color:#7cf7d4">Return to PRISM</a></div>');
+      res.end('<!doctype html><meta charset="utf-8"><title>404</title><body style="background:#16222e;color:#fdf3e0;font:16px/1.6 system-ui;display:grid;place-items:center;height:100vh;margin:0"><div style="text-align:center"><h1 style="font-size:clamp(3rem,12vw,8rem);margin:0">404</h1><p>Nothing on this shelf.</p><a href="/" style="color:#ffd89a">Back to the shop</a></div>');
       return;
     }
     res.writeHead(404);

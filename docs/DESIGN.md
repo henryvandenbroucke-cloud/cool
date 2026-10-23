@@ -4,7 +4,7 @@
 > You stock, craft and sell lamps, candles, lenses and stained glass to the townsfolk,
 > and every light you sell glows in a window of the village outside.
 
-Status: **design locked, pre-production.** Replaces the PRISM site in this repo.
+Status: **M1 vertical slice built** (see the README for what's in). Replaces the PRISM site in this repo.
 
 ---
 
@@ -182,12 +182,17 @@ style. Credits screen lists every pack even though CC0 doesn't require it.
 - Room expansions, decorating, reputation, letters, all 12 regulars
 - Weather and seasons, hire staff, photo mode, finale festival
 
-## 15. Open requirement before building
+## 15. Asset pipeline
 
-The environment's network currently allows only npm and raw GitHub. To fetch the real
-recorded sounds and the full CC0 model packs, add these under **Allowed domains**:
-`kenney.nl`, `opengameart.org`, `quaternius.com`, `freesound.org` (and optionally `itch.io`,
-`poly.pizza`).
+Models and sounds were downloaded from kenney.nl and opengameart.org (CC0 only), trimmed and
+encoded with ffmpeg (`.ogg` + `.m4a` for Safari), and credited in `assets/CREDITS.md`. Quaternius
+and Freesound were not needed for M1.
+
+### M1 deviations from this document
+- Townsfolk and the cat are Kenney Mini Characters / Cube Pets (rigged, with idle/walk/pick-up/emote clips).
+- Cottages are built in code instead of using a pack, so every window can be lit individually.
+- Weather (clear/rain/fog) shipped in M1; seasons, staff, decorating, expansions, lens grinding and
+  stained glass stay in M2.
 
 ## 16. Research references
 
