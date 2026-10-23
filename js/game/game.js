@@ -329,10 +329,11 @@ export class Game {
     if (!b || !mesh) return;
     b.at = 'held';
     this.scene.remove(mesh);
-    mesh.position.set(0.18, -0.2, -0.05);
-    mesh.rotation.set(0.18, -0.25, 0);
+    mesh.position.set(0.2, -0.12, -0.08);
+    mesh.rotation.set(0.32, -0.3, 0);
     mesh.scale.setScalar(0.72);
     setBoxOpen(mesh, true);
+    mesh.userData.flaps?.forEach((f) => { f.visible = false; });
     this.player.hand.add(mesh);
     this.player.liftHand(true);
     this.held = { type: 'box', box: b, mesh, hit: mesh.userData.hit };

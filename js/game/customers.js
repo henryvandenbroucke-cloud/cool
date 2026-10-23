@@ -171,7 +171,7 @@ export class Customers {
   planNight(s) {
     const lv = levelFor(s.xp);
     const weatherBoost = s.weather === 'clear' ? 1 : 0.9;
-    const total = Math.min(24, Math.round((6 + lv * 2 + Math.min(6, s.night)) * weatherBoost));
+    const total = Math.min(30, Math.round((8 + lv * 3 + Math.min(8, s.night * 1.5)) * weatherBoost));
     const regs = Object.entries(REGULARS).filter(([, r]) => r.from <= s.night).map(([id]) => id).filter(() => this.r() < 0.8);
     const arrivals = [];
     const last = ((LAST_ARRIVAL_HOUR + 24 - 18) / 12) * SHIFT_SECONDS;
