@@ -499,8 +499,9 @@ body.on-title .panel-wrap { z-index: 40; }
 .meter-wrap { flex-basis: 100%; display: grid; justify-items: center; }
 .meter.swing i.mark { width: 12px; left: 0; border-radius: 6px; background: linear-gradient(180deg, #fff3d0, #f0a04a); box-shadow: 0 0 8px var(--glow); }
 .meter.cool i { background: linear-gradient(90deg, #f0a04a, #f3e6c8 60%, #cfe9ef); transition: width .1s linear; }
-.pad-wrap { display: grid; justify-items: center; }
-.dial-pad { position: relative; width: 210px; height: 210px; border-radius: 50%; background: radial-gradient(circle, rgba(30,20,14,.35) 0 44%, rgba(255,226,170,.14) 45% 78%, rgba(30,20,14,.35) 79%); box-shadow: 0 6px 20px rgba(0,0,0,.35); backdrop-filter: blur(3px); touch-action: none; cursor: grab; }
+.pad-wrap { display: grid; justify-items: center; position: fixed; right: max(24px, 7vw); bottom: max(80px, 12vh); }
+@media (max-width: 720px) { .pad-wrap { right: 50%; transform: translateX(50%); bottom: 70px; } }
+.dial-pad { position: relative; width: clamp(170px, 22vh, 220px); height: clamp(170px, 22vh, 220px); border-radius: 50%; background: radial-gradient(circle, rgba(30,20,14,.35) 0 44%, rgba(255,226,170,.14) 45% 78%, rgba(30,20,14,.35) 79%); box-shadow: 0 6px 20px rgba(0,0,0,.35); backdrop-filter: blur(3px); touch-action: none; cursor: grab; }
 .dial-pad:active { cursor: grabbing; }
 .dial-pad b { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--font-head); font-weight: 600; font-size: 15px; color: rgba(255,240,210,.9); pointer-events: none; text-transform: lowercase; }
 .dial-pad b::before { content: '↻'; display: block; position: absolute; top: 37%; font-size: 26px; opacity: .7; animation: spin-hint 2.4s linear infinite; }
