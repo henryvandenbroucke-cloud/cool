@@ -22,7 +22,7 @@ export class Input {
   emit(action, e) { for (const fn of this.handlers.get(action) || []) fn(e); }
 
   requestLock() {
-    if (this.touch) return;
+    if (this.touch || this.free || !this.enabled) return;
     try { this.canvas.requestPointerLock?.()?.catch?.(() => {}); } catch { /* some browsers throw */ }
   }
   exitLock() { if (document.pointerLockElement) document.exitPointerLock?.(); }
@@ -41,6 +41,8 @@ export class Input {
     document.addEventListener('pointerlockchange', () => {
       this.locked = document.pointerLockElement === this.canvas;
       this.lockedAt = performance.now();
+      // a late-arriving lock while a bench or panel needs the cursor is handed straight back
+      if (this.locked && (this.free || !this.enabled)) { document.exitPointerLock?.(); return; }
       this.emit('lock', this.locked);
     });
     this.canvas.addEventListener('mousemove', (e) => {

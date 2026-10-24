@@ -3,7 +3,7 @@
 
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { toon, glow, textures, LAYER_NO_INK } from './render.js';
+import { toon, glow, textures, litMat, LAYER_NO_INK } from './render.js';
 import { placeable } from './assets.js';
 import { uvBox } from './village.js';
 import { tinLantern, flame, lamp as lampMesh, candle } from './products.js';
@@ -126,7 +126,7 @@ export async function buildShop(scene, ctx) {
   }
 
   // ---------- windows (frames, mullions, glass) ----------
-  const glassMat = new THREE.MeshToonMaterial({ color: '#cfe3e6', transparent: true, opacity: 0.16, depthWrite: false, gradientMap: m('#fff').gradientMap });
+  const glassMat = litMat({ color: '#cfe3e6', transparent: true, opacity: 0.16, depthWrite: false });
   const windowFrame = (cx, cy, w, h, z, axis = 'x', cols = 3, rows = 2) => {
     const g = new THREE.Group();
     const add = (geo, mat, x, y) => { const o = new THREE.Mesh(geo, mat); o.position.set(x, y, 0); g.add(o); return o; };
@@ -175,7 +175,7 @@ export async function buildShop(scene, ctx) {
   // open/closed sign hanging inside the door
   const signTexOpen = textures.label('OPEN', { bg: '#f6ecd8', fg: '#5e8a6c', size: 54, w: 256, h: 112, border: '#5e8a6c' });
   const signTexClosed = textures.label('CLOSED', { bg: '#f6ecd8', fg: '#b85a4c', size: 48, w: 256, h: 112, border: '#b85a4c' });
-  const signMat = new THREE.MeshToonMaterial({ map: signTexClosed, gradientMap: m('#fff').gradientMap });
+  const signMat = litMat({ map: signTexClosed });
   const sign = new THREE.Mesh(new RoundedBoxGeometry(0.42, 0.19, 0.02, 2, 0.01), [m('#8a5a3b'), m('#8a5a3b'), m('#8a5a3b'), m('#8a5a3b'), signMat, signMat]);
   sign.position.set(leafW / 2, 1.45, -0.07);
   sign.rotation.y = Math.PI;
@@ -225,7 +225,7 @@ export async function buildShop(scene, ctx) {
   root.add(porchLantern);
   // hanging shop sign
   const shopSignTex = textures.label('Lantern & Lens', { bg: '#2f4a4f', fg: '#ffd89a', border: '#d9b44a', size: 40, w: 420, h: 110 });
-  const shopSign = new THREE.Mesh(new RoundedBoxGeometry(1.5, 0.4, 0.05, 2, 0.02), [m('#5a3c2c'), m('#5a3c2c'), m('#5a3c2c'), m('#5a3c2c'), new THREE.MeshToonMaterial({ map: shopSignTex, gradientMap: m('#fff').gradientMap }), m('#5a3c2c')]);
+  const shopSign = new THREE.Mesh(new RoundedBoxGeometry(1.5, 0.4, 0.05, 2, 0.02), [m('#5a3c2c'), m('#5a3c2c'), m('#5a3c2c'), m('#5a3c2c'), litMat({ map: shopSignTex }), m('#5a3c2c')]);
   shopSign.position.set(1.7, 2.35, 6.3);
   root.add(shopSign);
   const wreath = await placeable('holiday/wreath.glb', { height: 0.42 });
@@ -385,21 +385,25 @@ export async function buildShop(scene, ctx) {
   stoveFlame.layers.set(LAYER_NO_INK);
   stoveFlame.userData.dynamic = true;
   root.add(stoveFlame);
-  // moulds tray + dye shelf
-  const tray = new THREE.Mesh(new RoundedBoxGeometry(0.9, 0.04, 0.4, 2, 0.01), m('#a8aca2'));
-  tray.position.set(-2.8, 0.955, -3.55);
+  // moulds tray + dye shelf, kept to the back right so the work mat stays clear
+  const tray = new THREE.Mesh(new RoundedBoxGeometry(0.5, 0.03, 0.24, 2, 0.01), m('#a8aca2'));
+  tray.position.set(-2.5, 0.95, -3.8);
   root.add(tray);
   const dyeShelf = new THREE.Mesh(new RoundedBoxGeometry(1.6, 0.05, 0.25, 2, 0.01), shelfWoodM);
   dyeShelf.position.set(-2.95, 1.62, -3.86);
   root.add(dyeShelf);
   const candleSupplyBin = new THREE.Group();
-  candleSupplyBin.position.set(-2.1, 0.94, -3.5);
+  candleSupplyBin.position.set(-2.15, 0.94, -3.42);
   candleSupplyBin.userData.dynamic = true;
   root.add(candleSupplyBin);
-  // bench props: moulds, wick spools, dye bottles, wax blocks
-  for (let i = 0; i < 4; i++) {
-    const mould = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.1, 16, 1, true), m('#a8aca2', { side: THREE.DoubleSide }));
-    mould.position.set(-3.15 + i * 0.13, 1.025, -3.55);
+  // the felt work mat: everything you make at this bench happens here
+  const candleMat = new THREE.Mesh(new RoundedBoxGeometry(0.62, 0.012, 0.44, 2, 0.005), m('#3e5a4e'));
+  candleMat.position.set(-3.3, 0.94, -3.48);
+  root.add(candleMat);
+  // bench props: spare moulds, wick spools, dye bottles
+  for (let i = 0; i < 3; i++) {
+    const mould = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.09, 16, 1, true), m('#a8aca2', { side: THREE.DoubleSide }));
+    mould.position.set(-2.66 + i * 0.15, 1.01, -3.8);
     root.add(mould);
   }
   for (const [x, c] of [[-3.55, '#f3e6c8'], [-3.35, '#e9b45a'], [-3.15, '#e48f86'], [-2.95, '#9cbf9a'], [-2.75, '#b5a3d8']]) {
@@ -418,14 +422,14 @@ export async function buildShop(scene, ctx) {
     const rimB = rimA.clone();
     rimB.position.y = -0.035;
     spool.add(core, rimA, rimB);
-    spool.position.set(-2.35 + i * 0.12, 0.98, -3.8);
+    spool.position.set(-2.12 + i * 0.12, 0.98, -3.82);
     root.add(spool);
   }
   const ladle = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.36, 6), m('#6f7a74'));
   ladle.rotation.z = 1.0;
   ladle.position.set(-4.12, 1.18, -3.55);
   root.add(ladle);
-  const candleSpot = { center: new THREE.Vector3(-3.1, 0.95, -3.55), cam: new THREE.Vector3(-3.1, 1.85, -2.45), look: new THREE.Vector3(-3.1, 0.95, -3.6), pot: pot.position.clone(), wax: waxSurface, flame: stoveFlame, tray, dyeShelf, supplyBin: candleSupplyBin };
+  const candleSpot = { center: new THREE.Vector3(-3.1, 0.95, -3.55), work: new THREE.Vector3(-3.3, 0.946, -3.5), pot: pot.position.clone(), wax: waxSurface, flame: stoveFlame, tray, dyeShelf, supplyBin: candleSupplyBin };
   root.add(hit(new THREE.BoxGeometry(3.0, 0.9, 0.8), new THREE.Vector3(-3.4, 1.2, -3.5), { type: 'station', id: 'candle' }));
 
   // ---------- workshop: lamp bench ----------
@@ -449,7 +453,7 @@ export async function buildShop(scene, ctx) {
     root.add(bulb);
   }
   for (let i = 0; i < 2; i++) {
-    const frame = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.14, 0.15, 12, 1, true), new THREE.MeshToonMaterial({ color: '#4b5350', wireframe: true }));
+    const frame = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.14, 0.15, 12, 1, true), litMat({ color: '#4b5350', wireframe: true }));
     frame.position.set(1.55 + i * 0.05, 1.01 + i * 0.15, -3.8);
     root.add(frame);
   }
@@ -462,9 +466,12 @@ export async function buildShop(scene, ctx) {
   driver.rotation.y = 0.4;
   driver.position.set(0.45, 0.95, -3.35);
   root.add(driver);
-  const lampSpot = { center: new THREE.Vector3(0.9, 0.95, -3.55), cam: new THREE.Vector3(0.9, 1.75, -2.55), look: new THREE.Vector3(0.9, 0.98, -3.6), supplyBin: lampSupplyBin };
+  const lampMat = new THREE.Mesh(new RoundedBoxGeometry(0.5, 0.012, 0.4, 2, 0.005), m('#4a4440'));
+  lampMat.position.set(0.95, 0.94, -3.48);
+  root.add(lampMat);
+  const lampSpot = { center: new THREE.Vector3(0.9, 0.95, -3.55), work: new THREE.Vector3(0.95, 0.946, -3.48), supplyBin: lampSupplyBin };
   root.add(hit(new THREE.BoxGeometry(1.9, 0.9, 0.8), new THREE.Vector3(1.0, 1.2, -3.5), { type: 'station', id: 'lamp' }));
-  const lampLocked = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.22), new THREE.MeshToonMaterial({ map: textures.label('Licence needed', { size: 30, w: 300, h: 96 }), gradientMap: m('#fff').gradientMap }));
+  const lampLocked = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.22), litMat({ map: textures.label('Licence needed', { size: 30, w: 300, h: 96 }) }));
   lampLocked.position.set(1.0, 1.25, -3.94);
   lampLocked.userData.dynamic = true;
   root.add(lampLocked);
@@ -590,12 +597,19 @@ export async function buildShop(scene, ctx) {
   lbTop.position.y = 0.9;
   const lbBody = new THREE.Mesh(uvBox(1.44, 0.86, 0.64, 1.2), shelfWoodM);
   lbBody.position.y = 0.43;
-  const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.05, 28), m('#a8aca2'));
-  wheel.rotation.z = Math.PI / 2;
-  wheel.position.set(-0.45, 1.16, -0.1);
-  const wheelStand = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.24, 0.06), m('#4b5350'));
-  wheelStand.position.set(-0.45, 1.0, -0.1);
-  lensBench.add(lbTop, lbBody, wheel, wheelStand);
+  // a polishing lap: a heavy iron plate that turns while you work the glass on it
+  const lapBase = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 0.05, 32), m('#4b5350'));
+  lapBase.position.set(0, 0.96, 0.05);
+  const wheel = new THREE.Group();
+  wheel.position.set(0, 0.99, 0.05);
+  wheel.userData.dynamic = true;
+  const lapPlate = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.022, 40), m('#8e948d'));
+  const lapPad = new THREE.Mesh(new THREE.CylinderGeometry(0.155, 0.155, 0.006, 40), m('#b46a4e'));
+  lapPad.position.y = 0.013;
+  const lapMark = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.008, 0.12), m('#e9d6b0'));
+  lapMark.position.set(0, 0.015, 0.07);
+  wheel.add(lapPlate, lapPad, lapMark);
+  lensBench.add(lbTop, lbBody, lapBase, wheel);
   studio.add(lensBench);
   const lensSupplyBin = new THREE.Group();
   lensSupplyBin.position.set(3.0, 0.94, -7.3);
@@ -622,8 +636,8 @@ export async function buildShop(scene, ctx) {
   glassSupplyBin.position.set(4.75, 0.94, -7.3);
   glassSupplyBin.userData.dynamic = true;
   studio.add(glassSupplyBin);
-  const lensSpot = { center: new THREE.Vector3(2.4, 0.95, -7.3), cam: new THREE.Vector3(2.4, 1.75, -6.3), look: new THREE.Vector3(2.4, 0.98, -7.35), supplyBin: lensSupplyBin, wheel };
-  const glassSpot = { center: new THREE.Vector3(4.15, 0.95, -7.3), cam: new THREE.Vector3(4.15, 1.95, -6.55), look: new THREE.Vector3(4.15, 0.95, -7.3), supplyBin: glassSupplyBin };
+  const lensSpot = { center: new THREE.Vector3(2.4, 0.95, -7.3), work: new THREE.Vector3(2.4, 1.018, -7.3), supplyBin: lensSupplyBin, wheel };
+  const glassSpot = { center: new THREE.Vector3(4.15, 0.95, -7.3), work: new THREE.Vector3(4.15, 0.945, -7.35), supplyBin: glassSupplyBin };
   studio.add(hit(new THREE.BoxGeometry(1.5, 0.9, 0.8), new THREE.Vector3(2.4, 1.2, -7.3), { type: 'station', id: 'lens' }));
   studio.add(hit(new THREE.BoxGeometry(1.5, 0.9, 0.8), new THREE.Vector3(4.15, 1.2, -7.3), { type: 'station', id: 'glass' }));
   const studioColliders = [
@@ -653,7 +667,7 @@ export async function buildShop(scene, ctx) {
     b.rotation.z = (k % 2 ? 1 : -1) * 0.12;
     boards.add(b);
   }
-  const soonSign = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.22), new THREE.MeshToonMaterial({ map: textures.label('Back Studio', { size: 30, w: 300, h: 96 }), gradientMap: m('#fff').gradientMap }));
+  const soonSign = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.22), litMat({ map: textures.label('Back Studio', { size: 30, w: 300, h: 96 }) }));
   soonSign.position.set(3.6, 1.6, ROOM.minZ + 0.1);
   boards.add(soonSign);
   root.add(boards);
@@ -723,7 +737,7 @@ export async function buildShop(scene, ctx) {
 // ---------- reusable fixtures (also used for decor placed by the player) ----------
 let shelfWoodMat = null;
 const shelfWood = () => (shelfWoodMat ||= toon('#ffffff', { map: textures.planks([1, 1]) }));
-const tagMaterial = () => new THREE.MeshToonMaterial({ map: textures.label('—', { size: 40, w: 160, h: 72 }), gradientMap: m('#fff').gradientMap });
+const tagMaterial = () => litMat({ map: textures.label('—', { size: 40, w: 160, h: 72 }) });
 
 function worldBox(x, z, rotY, hw, hd) {
   const c = Math.abs(Math.cos(rotY)), s = Math.abs(Math.sin(rotY));

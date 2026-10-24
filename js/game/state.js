@@ -115,16 +115,25 @@ export function coziness(s) {
 }
 export function cozyBonus(s) { return Math.min(0.08, coziness(s) * 0.004); }
 
+/**
+ * Chance one visitor buys at this price. A smooth curve: everyone has their own
+ * limit, most sit a little above market, so each 10¢ nudges the odds.
+ */
 export function buyChance(price, market, bonus = 0) {
   const r = price / Math.max(0.01, market);
-  let c;
-  if (r <= 0.9) c = 1;
-  else if (r <= 1.05) c = 0.95;
-  else if (r <= 1.2) c = 0.75;
-  else if (r <= 1.4) c = 0.4;
-  else if (r <= 1.6) c = 0.15;
-  else c = 0;
+  let c = r <= 0.9 ? 1 : 1 / (1 + Math.exp((r - 1.22) / 0.07));
+  if (c < 0.005) c = 0;
   return Math.max(0, Math.min(1, c + (c > 0 ? bonus : 0)));
+}
+
+/** The price that earns the most per visitor who looks at it (chance × profit). */
+export function bestPrice(market, cost) {
+  let best = market, bestV = -Infinity;
+  for (let p = Math.max(cost, market * 0.7); p <= market * 1.6; p += 0.05) {
+    const v = buyChance(p, market) * (p - cost);
+    if (v > bestV) { bestV = v; best = p; }
+  }
+  return Math.round(best * 20) / 20;
 }
 
 export function priceMood(price, market) {

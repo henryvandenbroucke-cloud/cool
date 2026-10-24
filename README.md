@@ -42,6 +42,7 @@ Any static server works (`python3 -m http.server 4173`). It runs on desktop and 
 | Put a box down | `E` | **Drop** |
 | Rotate furniture | mouse wheel | — |
 | Settings | `Tab` | ☰ |
+| Bench actions | `Space` (hold to pour/solder) | the big button |
 | Photo mode | `P` | ☰ → Photo mode |
 | Release mouse / leave bench | `Esc` | — |
 
@@ -49,17 +50,26 @@ Any static server works (`python3 -m http.server 4173`). It runs on desktop and 
 
 1. **Prep (morning, untimed).** Order stock in the **ledger** on the counter. Boxes land on the porch.
    Carry them in and stock the shelves; click a **price tag** to set prices.
-2. **Craft.** Carry **Candle Supplies** to the candle bench and pour candles: pick a mould → hold to pour → drop the
-   wick → choose a colour. Buy the **Lamp Workbench** licence (level 2) to build lamps: base → screw in the
-   bulb → shade → glow colour → switch on. Every step succeeds; doing it nicely earns quality stars (worth more).
-   Finished pieces go into the crate: pick it up and stock them like anything else.
-3. **Night shift (dusk to dawn, about 12 minutes).** Flip the door sign to OPEN. Townsfolk browse, pick things up and
-   queue at the counter. Click each item to ring it up, then the register: count out change for cash, or key in
-   card payments (“Count it for me” is always there).
+2. **Craft.** Every bench is a close-up minigame on a clear work mat, and every option is open to you:
+   - **Candles:** pick a mould → drop in a dye → hold to pour up to the green line → drop the swinging wick →
+     blow to cool → pop it out of the mould.
+   - **Lamps** (Lamp Workbench licence): base → twist the bulb in with circles → drop on a shade → glow colour →
+     pull the chain.
+   Nothing can fail; doing a step nicely earns quality stars (worth more). Each piece gets a reveal with
+   sparkles and its stars, then goes into the crate: pick the crate up and stock the pieces like anything else.
+3. **Night shift (dusk to dawn, about 12 minutes).** Flip the door sign to OPEN. Townsfolk browse, drop what they
+   pick into their tote bags and queue at the counter. Click each item to scan it, then the register:
+   - **Cash:** the till shows total, received, change due and given (green when it's exact). Hand back change
+     from a full drawer of coins (1¢ to 2) and notes (5 to 50); click money in the tray to take it back.
+   - **Card:** key the total into the terminal (your keyboard's number keys work too).
+   “Count it for me” is always there if you just want to keep the line moving.
+   Prices: every tag has −1 / −.50 / −.10 / +.10 / +.50 / +1 buttons, the chance a customer buys at that price, and
+   a one-click “best price”.
 4. **Dawn.** You get a summary, then it autosaves and a new morning begins.
 
-A **glowing path** on the floor leads you through your first night: it always points at the next thing to do,
-with a small card at the top of the screen saying what and why. Skip or replay it from settings.
+A **glowing path** of chevrons on the floor leads you through your first night, and a label rides on the
+thing to use next (it slides to the screen edge as an arrow, with the distance, when it's behind you). The
+card at the top says only the one action to take. Skip or replay it from settings.
 
 **Progression:** shop level and licences (lamps, jar candles, lavender dye, brass and ceramic bases), friendship with
 six regulars (each one lights up to three windows of their own house and writes you letters), wishes pinned to the
@@ -115,9 +125,11 @@ A few design decisions:
   lit lamps and village windows.
 - **Real sound.** Every sound effect and ambience is a CC0 recording (see `assets/CREDITS.md`). The outdoor
   ambience goes through a low-pass filter that closes when you step inside and opens when the door swings.
-- **Fast on modest hardware.** Static geometry is merged per material, the forest is instanced in culled
-  chunks, and the renderer picks a quality tier on its own (render scale, outline resolution, bloom,
-  number of lights) by watching the frame time. You can pin it in settings and show an FPS counter.
+- **Natural light, fast on modest hardware.** Physically based materials with soft image-based light,
+  bloom only on real light sources, and FXAA. Static geometry is merged per material and the forest is
+  instanced in culled chunks. Auto quality watches the frame time and turns effects down before it
+  ever lowers the resolution. You can pin a tier, turn on storybook ink outlines, or show an FPS counter.
+  If the browser is drawing without the graphics card, the home screen says how to fix it.
 - **Cozy rules.** No linear motion anywhere (`tween.js`), squash-and-settle when items land, nothing
   shakes, and the clock pauses while a panel is open.
 

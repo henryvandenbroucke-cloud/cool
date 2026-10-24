@@ -27,7 +27,7 @@ export const SUPPLIES = {
 
 export const LENS_FORMS = {
   reading:  { name: 'Reading Lens', market: 13, unitCost: 2.2 },
-  spyglass: { name: 'Spyglass',     market: 24, unitCost: 4, licence: 'brass' },
+  spyglass: { name: 'Spyglass',     market: 24, unitCost: 4 },
 };
 
 /** 5×5 stained-glass patterns: 1 = motif colour, 0 = background colour. */
@@ -51,7 +51,7 @@ export const GLASS_UNIT_COST = 4.5;
 export const CANDLE_FORMS = {
   pillar: { name: 'Pillar Candle', market: 6.0, unitCost: 0.8 },
   taper:  { name: 'Taper Pair',    market: 4.5, unitCost: 0.6 },
-  jar:    { name: 'Jar Candle',    market: 8.5, unitCost: 1.1, licence: 'jar' },
+  jar:    { name: 'Jar Candle',    market: 8.5, unitCost: 1.1 },
 };
 
 export const CANDLE_COLORS = {
@@ -59,13 +59,13 @@ export const CANDLE_COLORS = {
   honey:    { name: 'Honey',    hex: '#e9b45a' },
   rose:     { name: 'Rose',     hex: '#e48f86' },
   sage:     { name: 'Sage',     hex: '#9cbf9a' },
-  lavender: { name: 'Lavender', hex: '#b5a3d8', licence: 'lavender' },
+  lavender: { name: 'Lavender', hex: '#b5a3d8' },
 };
 
 export const LAMP_BASES = {
   wood:    { name: 'Walnut',  hex: '#8a5a3b', market: 0 },
-  brass:   { name: 'Brass',   hex: '#c99a3e', market: 4, licence: 'brass' },
-  ceramic: { name: 'Ceramic', hex: '#d9e2dc', market: 3, licence: 'brass' },
+  brass:   { name: 'Brass',   hex: '#c99a3e', market: 4 },
+  ceramic: { name: 'Ceramic', hex: '#d9e2dc', market: 3 },
 };
 export const LAMP_SHADES = {
   drum:  { name: 'Paper Drum',  market: 0 },
@@ -83,9 +83,6 @@ export const LAMP_UNIT_COST = 3.5;
 
 export const LICENCES = {
   lamps:    { name: 'Lamp Workbench',     level: 2, price: 40, blurb: 'Build table lamps. Unlocks lamp kits, bulbs and tin lanterns.' },
-  jar:      { name: 'Jar Candles',        level: 2, price: 25, blurb: 'Pour candles into little glass jars.' },
-  lavender: { name: 'Lavender Dye',       level: 3, price: 30, blurb: 'A soft purple wax dye.' },
-  brass:    { name: 'Brass & Ceramic',    level: 3, price: 50, blurb: 'Fancier lamp bases.' },
   lens:     { name: 'Lens Grinding',      level: 4, price: 90, requires: 'studio', blurb: 'Polish reading lenses and spyglasses. Needs the Back Studio.' },
   glass:    { name: 'Stained Glass',      level: 5, price: 140, requires: 'studio', blurb: 'Solder coloured glass into window panels. Needs the Back Studio.' },
 };

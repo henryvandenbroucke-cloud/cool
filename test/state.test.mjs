@@ -40,7 +40,8 @@ test('buy chance is gentle and monotonic', () => {
     assert.ok(c <= prev + 1e-9, `non-monotonic at ${r}`);
     prev = c;
   }
-  assert.equal(buyChance(10, 10), 0.95);
+  assert.ok(Math.abs(buyChance(10, 10) - 0.95) < 0.02);
+  assert.ok(buyChance(11, 10) < buyChance(10.5, 10) && buyChance(10.5, 10) < buyChance(10, 10));
   assert.equal(buyChance(30, 10), 0);
 });
 

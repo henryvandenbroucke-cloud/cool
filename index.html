@@ -76,23 +76,44 @@
   <canvas id="view" aria-label="Lantern and Lens game view"></canvas>
 
   <!-- Boot / title: a hanging shop sign -->
-  <section id="title" class="screen is-open" aria-labelledby="title-name">
-    <div class="title-wrap">
-      <div class="chains" aria-hidden="true"><i></i><i></i></div>
-      <div class="sign-board">
+  <section id="title" class="screen title-screen is-open" aria-labelledby="title-name">
+    <aside class="menu-panel">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><svg class="ico"><use href="#i-lantern"/></svg></div>
         <p class="eyebrow">est. at the edge of the forest</p>
         <h1 id="title-name">Lantern <span class="amp">&amp;</span> Lens</h1>
-        <p class="title-sub">Stock the shelves · Pour the candles · Light up the village</p>
+        <p class="title-sub">A cozy night-shift light shop</p>
       </div>
-      <div class="title-paper">
-        <div id="loading" class="loading" role="status" aria-live="polite">
-          <div class="wick"><i id="loading-fill"></i></div>
-          <span id="loading-text">Lighting the lamps…</span>
-        </div>
+      <div id="loading" class="loading" role="status" aria-live="polite">
+        <div class="wick"><i id="loading-fill"></i></div>
+        <span id="loading-text">Lighting the lamps…</span>
+      </div>
+      <nav id="menu" class="menu" hidden>
+        <button class="menu-btn primary" id="m-continue" hidden><svg class="ico"><use href="#i-candle"/></svg><span><b>Continue</b><small id="m-continue-sub"></small></span></button>
+        <button class="menu-btn" id="m-play"><svg class="ico"><use href="#i-house"/></svg><span><b>Play</b><small>Start a shop or pick a save</small></span></button>
+        <button class="menu-btn" id="m-settings"><svg class="ico"><use href="#i-gear"/></svg><span><b>Settings</b><small>Sound, graphics, controls</small></span></button>
+        <button class="menu-btn" id="m-how"><svg class="ico"><use href="#i-ledger"/></svg><span><b>How to play</b><small>The shop in a minute</small></span></button>
+        <button class="menu-btn" id="m-credits"><svg class="ico"><use href="#i-heart"/></svg><span><b>Credits</b><small>The people behind the art and sound</small></span></button>
+      </nav>
+      <div id="menu-sub" class="menu-sub" hidden>
+        <button class="back" id="m-back">← Back</button>
+        <h2 id="menu-sub-title">Your shops</h2>
         <div id="slots" class="slots" hidden></div>
-        <p class="title-foot">Best with headphones · <kbd>W A S D</kbd> walk · mouse to look · <kbd>Click</kbd> to use</p>
+        <div id="menu-how" class="how" hidden>
+          <ol>
+            <li><b>Morning:</b> order stock in the ledger on the counter. Boxes arrive on the porch.</li>
+            <li><b>Stock:</b> carry boxes in and click shelves to fill them. Click a price tag to set prices.</li>
+            <li><b>Craft:</b> load supplies into a bench and make candles, lamps, lenses and stained glass.</li>
+            <li><b>Night:</b> flip the door sign to OPEN. Scan each item, then take cash or card at the register.</li>
+            <li><b>Dawn:</b> every sale lights a window in the village. Light them all for the Lantern Festival.</li>
+          </ol>
+          <p class="small">A glowing path shows you what to do on your first night.</p>
+        </div>
       </div>
-    </div>
+      <p id="gpu-warn" class="gpu-warn" hidden>Your browser is drawing the game without your graphics card, so it will feel slow. Turn on <b>“Use graphics acceleration when available”</b> in your browser’s settings, then restart the browser.</p>
+      <p class="title-foot">Best with headphones · <kbd>W A S D</kbd> walk · mouse to look · <kbd>Click</kbd> to use</p>
+    </aside>
+    <p class="title-caption" aria-hidden="true">Night falls on the hamlet…</p>
   </section>
 
   <!-- In-game HUD -->
@@ -121,6 +142,7 @@
       <div class="guide-text"><b id="guide-title"></b><span id="guide-body"></span><div id="guide-pips" class="pips"></div></div>
       <button id="guide-skip" class="guide-skip">Skip tutorial</button>
     </div>
+    <div id="guide-pin" class="guide-pin" hidden><i></i><b></b><small></small></div>
 
     <div id="crosshair" class="crosshair" aria-hidden="true"><i></i></div>
     <div id="prompt" class="prompt" aria-live="polite"></div>
@@ -149,7 +171,7 @@
 
   <!-- Workbench overlay -->
   <div id="station" class="station" hidden>
-    <div class="station-head"><h3 id="station-title"></h3><p id="station-step"></p></div>
+    <div class="station-head"><h3 id="station-title"></h3><div id="station-pips" class="pips-row"></div><p id="station-step"></p></div>
     <div id="station-ui" class="station-ui"></div>
     <button id="station-leave" class="btn ghost">Leave bench <kbd>Esc</kbd></button>
   </div>

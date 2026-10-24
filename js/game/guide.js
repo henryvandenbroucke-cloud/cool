@@ -5,7 +5,6 @@ import * as THREE from 'three';
 import { LAYER_NO_INK } from './render.js';
 import { parseKey } from './state.js';
 
-const T = (desk, touch) => ({ desk, touch });
 
 function stockBox(g) {
   return g.state.boxes.find((b) => b.at !== 'held' && b.at !== 'staff' && parseKey(b.key).kind === 'stock' && b.count > 0);
@@ -32,22 +31,30 @@ function sectionTarget(g, key) {
 }
 const fixed = (x, y, z, fx, fz) => ({ pos: new THREE.Vector3(x, y, z), floor: new THREE.Vector3(fx ?? x, 0, fz ?? z) });
 
+// Each step is one clear action. title + act can change with what you're holding.
+const click = (g, what) => `${g.input.touch ? 'Tap' : 'Click'} ${what}`;
 export const STEPS = [
   {
-    title: 'Fetch the delivery', icon: 'i-box',
-    body: T('A box is waiting on the porch. Follow the glowing path and <b>click it</b> to pick it up.', 'A box is waiting on the porch. Follow the glowing path and <b>tap it</b>.'),
+    icon: 'i-box',
+    title: () => 'Pick up the delivery box',
+    act: (g) => click(g, 'the box on the porch'),
+    label: 'Pick up',
     target: (g) => boxTarget(g, stockBox(g)),
     done: (g) => (g.held?.type === 'box' && parseKey(g.held.box.key).kind === 'stock') || Object.keys(g.state.sections).length > 0,
   },
   {
-    title: 'Stock a shelf', icon: 'i-crate',
-    body: T('Carry it to a shelf and <b>click</b> to place items one by one. Right-click takes one back.', 'Carry it to a shelf and <b>tap</b> to place items one by one.'),
+    icon: 'i-crate',
+    title: () => 'Put the stock on a shelf',
+    act: (g) => (g.held?.type === 'box' ? click(g, 'the glowing shelf to place items') : click(g, 'the box to pick it up again')),
+    label: 'Place here',
     target: (g) => (g.held?.type === 'box' ? sectionTarget(g, g.held.box.key) : boxTarget(g, stockBox(g))),
     done: (g) => Object.values(g.state.sections).some((d) => d.count > 0),
   },
   {
-    title: 'Check the price tag', icon: 'i-tag',
-    body: T('Every shelf has a little tag. <b>Click it</b> to see your cost and set a fair price.', 'Every shelf has a little tag. <b>Tap it</b> to set a fair price.'),
+    icon: 'i-tag',
+    title: () => 'Set your price',
+    act: (g) => click(g, 'the price tag on the shelf'),
+    label: 'Price tag',
     target: (g) => {
       const id = Object.keys(g.state.sections).find((k) => g.state.sections[k].count > 0);
       const sec = id && g.shelves.sections.get(id);
@@ -56,8 +63,10 @@ export const STEPS = [
     done: (g) => g.flags.priceOpened || g.state.supplies.candle > 0 || g.state.stats.crafted > 0,
   },
   {
-    title: 'Fire up the candle bench', icon: 'i-candle',
-    body: T('Carry the <b>Candle Supplies</b> box from the porch to the candle bench at the back, then click the bench.', 'Carry the <b>Candle Supplies</b> box to the candle bench at the back, then tap the bench.'),
+    icon: 'i-candle',
+    title: () => 'Load the candle bench',
+    act: (g) => (g.held?.type === 'box' && g.held.box.key === 'supply:candle_supplies' ? click(g, 'the candle bench') : g.held ? 'Put down what you carry (E)' : click(g, 'the Candle Supplies box')),
+    label: 'Candle supplies',
     target: (g) => {
       if (g.held?.type === 'box' && g.held.box.key === 'supply:candle_supplies') return fixed(-3.3, 1.35, -3.5, -3.1, -2.6);
       if (g.held) return null;
@@ -66,31 +75,43 @@ export const STEPS = [
     done: (g) => g.state.supplies.candle > 0 || g.state.stats.crafted > 0,
   },
   {
-    title: 'Pour your first candle', icon: 'i-candle',
-    body: T('<b>Click the candle bench</b>: pick a mould, hold to pour, drop the wick, choose a colour.', '<b>Tap the candle bench</b>: pick a mould, hold to pour, drop the wick, choose a colour.'),
-    target: () => fixed(-3.1, 1.35, -3.55, -3.1, -2.6),
+    icon: 'i-candle',
+    title: () => 'Make your first candle',
+    act: (g) => click(g, 'the candle bench'),
+    label: 'Candle bench',
+    target: () => fixed(-3.3, 1.35, -3.5, -3.1, -2.6),
     done: (g) => g.state.stats.crafted > 0,
   },
   {
-    title: 'Shelve your candle', icon: 'i-crate',
-    body: T('Finished pieces wait in the <b>crate</b> beside the bench. Pick it up and put the candle on a shelf.', 'Pick up the <b>crate</b> beside the bench and put the candle on a shelf.'),
+    icon: 'i-crate',
+    title: () => 'Put your candle on a shelf',
+    act: (g) => (g.held?.type === 'crate' ? click(g, 'a shelf') : click(g, 'the crate by the bench')),
+    label: 'Crate',
     target: (g) => (g.held?.type === 'crate' ? sectionTarget(g, g.state.crafted.find((k) => k.startsWith(g.held.id)) || null) : fixed(-1.55, 0.9, -3.55, -1.55, -2.85)),
     done: (g) => Object.values(g.state.sections).some((d) => d.key.startsWith('candle') && d.count > 0) || g.state.stats.sold > 0,
   },
   {
-    title: 'Open the shop', icon: 'i-bell',
-    body: T('When you’re ready, <b>flip the sign</b> on the front door to OPEN. Night falls and the townsfolk come.', 'When you’re ready, <b>tap the sign</b> on the front door to open.'),
+    icon: 'i-bell',
+    title: () => 'Open the shop',
+    act: (g) => click(g, 'the sign on the front door'),
+    label: 'Open sign',
     target: () => fixed(2.9, 1.65, 4.02, 2.9, 3.2),
     done: (g) => g.state.phase === 'shift',
   },
   {
-    title: 'Serve your first customer', icon: 'i-coin',
-    body: T('Wait behind the counter. <b>Click each item</b> a customer puts down, then <b>click the register</b>.', 'Wait behind the counter. <b>Tap each item</b>, then <b>tap the register</b>.'),
+    icon: 'i-coin',
+    title: () => 'Serve your first customer',
+    act: (g) => {
+      const c = g.customers.current();
+      if (!c) return 'Wait behind the counter';
+      return g.customers.counterItems.some((x) => x.customer === c && !x.scanned) ? click(g, 'each item to scan it') : click(g, 'the register to take payment');
+    },
+    label: 'Counter',
     target: (g) => {
       const c = g.customers.current();
       if (!c) return fixed(3.62, 1.45, 0.05, 4.4, 0.05);
       const it = g.customers.counterItems.find((x) => x.customer === c && !x.scanned);
-      if (it) return { pos: it.mesh.position.clone().add(new THREE.Vector3(0, 0.4, 0)), floor: new THREE.Vector3(4.4, 0, it.mesh.position.z) };
+      if (it) return { pos: it.mesh.position.clone().add(new THREE.Vector3(0, 0.3, 0)), floor: new THREE.Vector3(4.4, 0, it.mesh.position.z) };
       return fixed(3.72, 1.55, 0.05, 4.4, 0.05);
     },
     done: (g) => g.state.stats.sold > 0,
@@ -106,7 +127,7 @@ const pathFrag = /* glsl */`
   uniform float uTime; uniform float uLen; uniform vec3 uColor;
   varying float vAlong; varying float vSide;
   void main() {
-    float chevron = fract(vAlong * 1.6 - abs(vSide) * 0.45 - uTime * 1.1);
+    float chevron = fract(vAlong * 1.6 + abs(vSide) * 0.45 - uTime * 1.1);   // tips lead toward the goal
     float shape = smoothstep(0.0, 0.12, chevron) * (1.0 - smoothstep(0.32, 0.5, chevron));
     float edge = 1.0 - smoothstep(0.75, 1.0, abs(vSide));
     float fadeIn = smoothstep(0.2, 1.0, vAlong);
@@ -131,7 +152,7 @@ export class Guide {
     this.path.renderOrder = 4;
     // marker: a glowing arrow and a ring on the floor
     this.marker = new THREE.Group();
-    const glowMat = new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffc27a').multiplyScalar(2.2), depthTest: false, transparent: true, opacity: 0.95 });
+    const glowMat = new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffc27a').multiplyScalar(2.2), transparent: true, opacity: 0.95 });
     const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.2, 4), glowMat);
     arrow.rotation.x = Math.PI;
     const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.06), glowMat);
@@ -145,13 +166,36 @@ export class Guide {
     this.ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffb35c').multiplyScalar(1.6), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
     this.ring.layers.set(LAYER_NO_INK);
     game.scene.add(this.path, this.marker, this.ring);
+    // a screen-space label that follows the target, or points to it from the edge
+    this.pin = document.getElementById('guide-pin');
+    this.pinLabel = this.pin.querySelector('b');
+    this.pinDist = this.pin.querySelector('small');
     this.hide();
     this.doneT = 0;
   }
 
   get active() { const s = this.game.state; return !s.tutorialDone; }
 
-  hide() { this.path.visible = false; this.marker.visible = false; this.ring.visible = false; }
+  hide() { this.path.visible = false; this.marker.visible = false; this.ring.visible = false; this.pin.hidden = true; }
+
+  /** Place the HUD pin over the target, or clamp it to the screen edge as an arrow. */
+  placePin(target, label) {
+    const cam = this.game.camera;
+    const p = target.pos.clone().project(cam);
+    const behind = p.z > 1;
+    const W = innerWidth, H = innerHeight, m = 56;
+    let x = (p.x * 0.5 + 0.5) * W, y = (-p.y * 0.5 + 0.5) * H;
+    if (behind) { x = W - x; y = H - m; }
+    const on = !behind && x > m && x < W - m && y > m + 60 && y < H - m;
+    const cx = Math.min(W - m, Math.max(m, x)), cy = Math.min(H - m, Math.max(m + 60, y));
+    this.pin.hidden = false;
+    this.pin.classList.toggle('edge', !on);
+    this.pin.style.transform = `translate(${cx}px, ${cy}px)`;
+    if (!on) this.pin.style.setProperty('--a', `${Math.atan2(y - cy, x - cx) || (behind ? Math.PI / 2 : 0)}rad`);
+    this.pinLabel.textContent = label;
+    const d = this.game.player.pos.distanceTo(target.floor);
+    this.pinDist.textContent = d > 1.6 ? `${Math.round(d)} m` : '';
+  }
 
   skip() {
     this.game.state.tutorialDone = true;
@@ -211,7 +255,8 @@ export class Guide {
       this.lastTarget = target.floor.clone();
       if (from.distanceTo(target.floor) < 0.9) this.path.visible = false;
       else {
-        const pts = this.game.customers.nav.find(from.clone(), target.floor.clone());
+        // skip grid points right under (or behind) the player so the ribbon starts ahead of you
+        const pts = this.game.customers.nav.find(from.clone(), target.floor.clone()).filter((q, i, a) => i === a.length - 1 || q.distanceTo(from) > 0.7);
         this.buildPath([from.clone(), ...pts]);
       }
     }
@@ -229,7 +274,7 @@ export class Guide {
       // gentle reminder when someone waits at the counter and you're far away
       const c = g.customers.current();
       const wren = s.staff.includes('wren') && s.phase === 'shift';
-      if (c && !wren && g.player.pos.distanceTo(g.world.shop.anchors.playerBehindCounter) > 4.5) this.show(STEPS[7].target(g), false);
+      if (c && !wren && g.player.pos.distanceTo(g.world.shop.anchors.playerBehindCounter) > 4.5) { const t = STEPS[7].target(g); this.show(t, false); this.placePin(t, 'Customer waiting'); }
       else this.hide();
       return;
     }
@@ -238,13 +283,15 @@ export class Guide {
     if (step !== s.tutorial) { s.tutorial = step; g.onTutorialStep?.(step); }
     if (step >= STEPS.length) {
       s.tutorialDone = true;
-      g.ui.guide({ done: true, title: 'You’re ready, shopkeeper!', body: 'Keep the shelves full and the village bright. Order more from the ledger on the counter.', n: STEPS.length, total: STEPS.length });
+      g.ui.guide({ done: true, title: 'You’re ready, shopkeeper!', body: 'Order more stock from the ledger on the counter', n: STEPS.length, total: STEPS.length });
       this.doneT = 5;
       this.hide();
       return;
     }
     const S = STEPS[step];
-    g.ui.guide({ n: step + 1, total: STEPS.length, title: S.title, body: g.input.touch ? S.body.touch : S.body.desk, icon: S.icon });
-    this.show(S.target(g));
+    g.ui.guide({ n: step + 1, total: STEPS.length, title: S.title(g), body: S.act(g), icon: S.icon, touch: g.input.touch });
+    const target = S.target(g);
+    this.show(target);
+    if (target) this.placePin(target, S.label);
   }
 }

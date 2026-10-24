@@ -1,5 +1,5 @@
-// Rendering: toon materials, ink outlines from a normal/depth pre-pass, warm
-// bloom for every light source, and a gentle storybook grade.
+// Rendering: physically based materials with soft environment light, warm
+// bloom for every light source, a gentle grade, and optional ink outlines.
 
 import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -8,25 +8,19 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Pass } from 'three/addons/postprocessing/Pass.js';
+import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
 
 export const LAYER_NO_INK = 1;   // glass, particles, sky: excluded from the outline pass
 
-// ---------- Toon materials ----------
-let gradient = null;
-export function toonGradient() {
-  if (gradient) return gradient;
-  // Three soft bands; the lowest isn't black so shadows stay warm and readable.
-  const data = new Uint8Array([92, 92, 92, 255, 168, 168, 168, 255, 236, 236, 236, 255, 255, 255, 255, 255]);
-  gradient = new THREE.DataTexture(data, 4, 1, THREE.RGBAFormat);
-  gradient.minFilter = gradient.magFilter = THREE.NearestFilter;
-  gradient.generateMipmaps = false;
-  gradient.needsUpdate = true;
-  return gradient;
+// ---------- Materials ----------
+/** A lit, physically based material. Accepts (and ignores) old toon-only options. */
+export function litMat(opts = {}) {
+  const { gradientMap, ...rest } = opts;
+  return new THREE.MeshStandardMaterial({ roughness: 0.8, metalness: 0, ...rest });
 }
 
 export function toon(color = '#ffffff', opts = {}) {
-  const m = new THREE.MeshToonMaterial({ color, gradientMap: toonGradient(), ...opts });
-  return m;
+  return litMat({ color, ...opts });
 }
 
 export function glow(color, intensity = 2.2) {
@@ -47,20 +41,22 @@ export const REMAP = {
 const matCache = new Map();
 /** Every converted toon material that came from a Kenney material with this name. */
 export function materialsNamed(name) { return [...matCache.values()].filter((m) => m.name === name); }
-/** Convert any loaded material into a shared toon material. */
+const METALS = new Set(['metal', 'metalDark', 'metalMedium']);
+/** Convert any loaded material into a shared lit material on our palette. */
 export function toToon(src, { remap = true } = {}) {
   const k = src.uuid + (remap ? 'r' : '');
   if (matCache.has(k)) return matCache.get(k);
   const name = src.name || '';
   let out;
   if (name === 'glass') {
-    out = new THREE.MeshToonMaterial({ color: REMAP.glass, transparent: true, opacity: 0.35, gradientMap: toonGradient(), depthWrite: false });
+    out = litMat({ color: REMAP.glass, transparent: true, opacity: 0.3, roughness: 0.05, depthWrite: false });
     out.userData.noInk = true;
   } else if (name === 'lamp') {
     out = glow(REMAP.lamp, 1.6);
   } else {
     const color = remap && REMAP[name] ? new THREE.Color(REMAP[name]) : (src.color ? src.color.clone() : new THREE.Color('#fff'));
-    out = new THREE.MeshToonMaterial({ color, map: src.map || null, gradientMap: toonGradient(), transparent: src.transparent, opacity: src.opacity ?? 1, alphaTest: src.alphaTest || 0 });
+    const metal = METALS.has(name);
+    out = litMat({ color, map: src.map || null, transparent: src.transparent, opacity: src.opacity ?? 1, alphaTest: src.alphaTest || 0, metalness: metal ? 0.6 : 0, roughness: metal ? 0.42 : name.startsWith('wood') ? 0.72 : 0.85 });
     if (src.map) { src.map.colorSpace = THREE.SRGBColorSpace; out.color.set('#ffffff'); }
   }
   out.name = name;
@@ -279,21 +275,34 @@ const InkShader = {
 // ---------- Quality ----------
 // Tiers trade fidelity for speed. 'auto' starts at medium and walks the
 // render scale (and then the tier) up or down from measured frame times.
+// Quality never trades resolution first: effects go before pixels do.
 export const TIERS = {
-  high:   { dpr: 1.5, scale: 1, ink: true, inkRes: 1, bloom: true, bloomDiv: 2, lights: 4 },
-  medium: { dpr: 1.0, scale: 1, ink: true, inkRes: 0.5, bloom: true, bloomDiv: 4, lights: 3 },
-  low:    { dpr: 1.0, scale: 0.75, ink: false, inkRes: 0.5, bloom: false, bloomDiv: 4, lights: 2 },
+  high:   { dpr: 1.5, bloom: true, bloomDiv: 2, aa: true, lights: 4, shadows: true },
+  medium: { dpr: 1.0, bloom: true, bloomDiv: 4, aa: true, lights: 4 },
+  low:    { dpr: 1.0, bloom: false, bloomDiv: 4, aa: false, lights: 3 },
 };
 const ORDER = ['low', 'medium', 'high'];
 
 export function createRenderer(canvas) {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', preserveDrawingBuffer: false, stencil: false });
+  // MSAA on the default framebuffer smooths edges on the low tier, which renders directly
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: false, stencil: false });
   renderer.setPixelRatio(1);
   renderer.setSize(window.innerWidth, window.innerHeight, false);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.NeutralToneMapping;
-  renderer.toneMappingExposure = 1.0;
+  renderer.toneMappingExposure = 1.05;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   return renderer;
+}
+
+/** The GPU the browser is using, and whether it is drawing in software (slow). */
+export function gpuInfo(renderer) {
+  try {
+    const gl = renderer.getContext();
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    const name = String(ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+    return { name, software: /swiftshader|llvmpipe|softpipe|software|basic render/i.test(name) };
+  } catch { return { name: 'unknown', software: false }; }
 }
 
 export function createComposer(renderer, scene, camera, { mobile = false } = {}) {
@@ -305,27 +314,33 @@ export function createComposer(renderer, scene, camera, { mobile = false } = {})
   const renderPass = new RenderPass(scene, camera);
   const ink = new ShaderPass(InkShader);
   ink.uniforms.tNormal.value = nd.target.texture;
-  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.55, 0.6, 0.86);
+  // threshold above 1: only emissive light sources bloom, lit walls never do
+  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.55, 0.5, 1.05);
   const bloomSetSize = bloom.setSize.bind(bloom);
+  const fxaa = new ShaderPass(FXAAShader);
   composer.addPass(nd);
   composer.addPass(renderPass);
   composer.addPass(bloom);
   composer.addPass(ink);
   composer.addPass(new OutputPass());
+  composer.addPass(fxaa);
 
   const api = {
     composer, ink, bloom,
     mode: 'auto',
     tier: mobile ? 'low' : 'medium',
     scale: 1,
+    outlines: false,
     fps: 60,
     onChange: null,
     setMode(mode) {
       this.mode = mode;
       if (mode !== 'auto') this.tier = mode;
-      this.scale = TIERS[this.tier].scale;
+      this.scale = 1;
       this.apply();
     },
+    setOutlines(on) { this.outlines = !!on; this.apply(); },
+    get direct() { return !TIERS[this.tier].bloom && !this.outlines && !this.filter; },
     apply() {
       const t = TIERS[this.tier];
       const dpr = Math.min(window.devicePixelRatio || 1, t.dpr) * this.scale;
@@ -333,22 +348,25 @@ export function createComposer(renderer, scene, camera, { mobile = false } = {})
       renderer.setSize(window.innerWidth, window.innerHeight, false);
       const s = renderer.getDrawingBufferSize(v2);
       composer.setSize(s.x, s.y);
-      const nw = Math.max(1, Math.round(s.x * t.inkRes)), nh = Math.max(1, Math.round(s.y * t.inkRes));
+      const inkRes = this.tier === 'high' ? 1 : 0.5;
+      const nw = Math.max(1, Math.round(s.x * inkRes)), nh = Math.max(1, Math.round(s.y * inkRes));
       nd.setSize(nw, nh);
       bloomSetSize(Math.round(s.x / (t.bloomDiv / 2)), Math.round(s.y / (t.bloomDiv / 2)));
       bloom.setSize = (w, h) => bloomSetSize(Math.round(w / (t.bloomDiv / 2)), Math.round(h / (t.bloomDiv / 2)));
       ink.uniforms.uRes.value.set(s.x, s.y);
       ink.uniforms.uNRes.value.set(nw, nh);
-      ink.uniforms.uThickness.value = Math.max(1, (nh / 900) * (t.inkRes < 1 ? 1.4 : 1));
-      nd.enabled = t.ink;
-      ink.uniforms.uStrength.value = t.ink ? 0.85 : 0;
+      ink.uniforms.uThickness.value = Math.max(1, (nh / 900) * (inkRes < 1 ? 1.4 : 1));
+      nd.enabled = this.outlines;
+      ink.uniforms.uStrength.value = this.outlines ? 0.85 : 0;
       bloom.enabled = t.bloom;
+      fxaa.enabled = t.aa;
+      fxaa.material.uniforms.resolution.value.set(1 / s.x, 1 / s.y);
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       this.onChange?.(this.tier, t);
     },
     resize() { this.apply(); },
-    // frame-time driven adaptation
+    // frame-time driven adaptation: tier first, resolution only as a last resort
     acc: 0, frames: 0, slow: 0, fast: 0,
     measure(dt) {
       this.acc += dt; this.frames++;
@@ -356,26 +374,25 @@ export function createComposer(renderer, scene, camera, { mobile = false } = {})
       this.fps = this.frames / this.acc;
       this.acc = 0; this.frames = 0;
       if (this.mode !== 'auto') return;
-      if (this.fps < 40) { this.slow++; this.fast = 0; } else if (this.fps > 57) { this.fast++; this.slow = 0; } else { this.slow = 0; this.fast = 0; }
+      if (this.fps < 45) { this.slow++; this.fast = 0; } else if (this.fps > 58) { this.fast++; this.slow = 0; } else { this.slow = 0; this.fast = 0; }
+      const i = ORDER.indexOf(this.tier);
       if (this.slow >= 2) {
         this.slow = 0;
-        const i = ORDER.indexOf(this.tier);
-        if (this.scale > 0.6) this.scale = Math.max(0.55, this.scale - 0.15);
-        else if (i > 0) { this.tier = ORDER[i - 1]; this.scale = TIERS[this.tier].scale; }
+        if (i > 0) this.tier = ORDER[i - 1];
+        else if (this.fps < 28 && this.scale > 0.8) this.scale = 0.8;
         else return;
         this.apply();
-      } else if (this.fast >= 6) {
+      } else if (this.fast >= 8) {
         this.fast = 0;
-        const i = ORDER.indexOf(this.tier);
-        if (this.scale < TIERS[this.tier].scale) this.scale = Math.min(TIERS[this.tier].scale, this.scale + 0.15);
-        else if (i < ORDER.length - 1) { this.tier = ORDER[i + 1]; this.scale = 0.85; }
+        if (this.scale < 1) this.scale = 1;
+        else if (i < ORDER.length - 1) this.tier = ORDER[i + 1];
         else return;
         this.apply();
       }
     },
     render(dt) {
       ink.uniforms.uTime.value = (ink.uniforms.uTime.value + dt) % 100;
-      if (!TIERS[this.tier].ink && !TIERS[this.tier].bloom) renderer.render(scene, camera);
+      if (this.direct) renderer.render(scene, camera);
       else composer.render(dt);
     },
   };

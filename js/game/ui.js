@@ -7,7 +7,7 @@ import { LICENCES, REGULARS, WEATHERS, EXPANSIONS, DECOR, STAFF } from './config
 import {
   levelProgress, orderable, orderBox, buyLicence, canBuyLicence, priceFor, setPrice, marketPrice, unitCost,
   productName, priceMood, totalWindows, wishLabel, levelFor, productStars, seasonFor, canBuyExpansion, buyExpansion,
-  canBuyDecor, buyDecor, canHire, hire, dismiss, coziness, parseKey,
+  canBuyDecor, buyDecor, canHire, hire, dismiss, coziness, parseKey, buyChance, bestPrice,
 } from './state.js';
 
 const $ = (id) => document.getElementById(id);
@@ -143,7 +143,7 @@ export class UI {
     this.el.guide.classList.toggle('done', !!step.done);
     this.el.guideNum.innerHTML = step.done ? ico('i-check') : step.icon ? ico(step.icon) : step.n;
     this.el.guideTitle.textContent = step.title;
-    this.el.guideBody.innerHTML = step.body;
+    this.el.guideBody.innerHTML = step.done ? step.body : `${ico(step.touch ? 'i-tap' : 'i-mouse-l')}<span>${step.body}</span>`;
     this.el.guidePips.innerHTML = step.total ? Array.from({ length: step.total }, (_, i) => `<i class="${i < step.n - 1 || step.done ? 'done' : i === step.n - 1 ? 'on' : ''}"></i>`).join('') : '';
   }
 
@@ -170,7 +170,7 @@ export class UI {
     this.panelOpen = false;
     document.body.classList.remove('panel-open');
     this.el.wrap.hidden = true;
-    this.input.enabled = true;
+    this.input.enabled = !this.game?.crafting?.isOpen;
     const cb = this.panelClose;
     this.panelClose = null;
     cb?.();
@@ -180,7 +180,7 @@ export class UI {
   }
 
   resumePointer() {
-    if (!this.input.touch) this.input.requestLock();
+    if (!this.input.touch && this.game?.running) this.input.requestLock();
   }
 
   // ---------- the ledger ----------
@@ -298,21 +298,24 @@ export class UI {
     const s = this.getState();
     const market = marketPrice(key);
     const cost = unitCost(key);
+    const best = bestPrice(market, cost);
     let p = priceFor(s, key);
+    const steps = [-1, -0.5, -0.1, 0.1, 0.5, 1];
     const render = () => {
       const mood = priceMood(p, market);
+      const chance = buyChance(p, market);
       const stars = productStars(key);
-      const col = mood.tone === 'sage' ? '#5e8a6c' : mood.tone === 'amber' ? '#b8742b' : '#b85a4c';
-      const pos = Math.max(0, Math.min(100, ((p / market - 0.6) / 1.1) * 100));
+      const tone = chance >= 0.85 ? 'good' : chance >= 0.5 ? 'warn' : 'bad';
+      const profit = p - cost;
       this.el.body.innerHTML = `<p class="tag-title">${esc(productName(key))}</p><p class="tag-sub">${stars ? `<span style="color:#d9822b">${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}</span> · ` : ''}price per item</p>
-        <div class="stepper"><button class="btn small" data-d="-1">−1</button><button class="btn small" data-d="-0.1">−.1</button><output>${money(p)}</output><button class="btn small" data-d="0.1">+.1</button><button class="btn small" data-d="1">+1</button></div>
-        <div class="slider-scale" title="cheap · fair · pricey"><b style="left:${pos}%"></b></div>
-        <p class="mood" style="color:${col}"><i></i>${mood.text}</p>
-        <div class="price-grid"><div><small>Cost</small><b>${money(cost)}</b></div><div><small>Market</small><b>${money(market)}</b></div><div><small>Profit</small><b style="color:${p - cost >= 0 ? '#5e8a6c' : '#b85a4c'}">${money(p - cost)}</b></div></div>
-        <div class="row"><button class="btn ghost small" id="pm">Use market price</button><span class="spacer"></span><button class="btn sage" id="pok">${ico('i-check')}Set price</button></div>`;
+        <output class="tag-price">${money(p)}</output>
+        <div class="step-row">${steps.map((d) => `<button class="btn small ${d < 0 ? 'minus' : 'plus'}" data-d="${d}">${d < 0 ? '−' : '+'}${Math.abs(d) < 1 ? Math.abs(d).toFixed(2).replace(/^0/, '') : Math.abs(d).toFixed(2)}</button>`).join('')}</div>
+        <div class="chance ${tone}"><div class="chance-head"><span>Chance a customer buys</span><b>${Math.round(chance * 100)}%</b></div><div class="chance-bar"><i style="width:${chance * 100}%"></i></div><p>${mood.text}</p></div>
+        <div class="price-grid"><div><small>Cost</small><b>${money(cost)}</b></div><div><small>Market</small><b>${money(market)}</b></div><div><small>Profit each</small><b style="color:${profit >= 0 ? '#5e8a6c' : '#b85a4c'}">${money(profit)}</b></div></div>
+        <div class="row tag-presets"><button class="btn ghost small" data-set="${market}">Market ${money(market)}</button><button class="btn ghost small" data-set="${best}">${ico('i-star')} Best ${money(best)}</button><span class="spacer"></span><button class="btn sage" id="pok">${ico('i-check')}Set price</button></div>`;
       const body = this.el.body;
-      body.querySelectorAll('[data-d]').forEach((b) => b.addEventListener('click', () => { p = Math.max(0.1, Math.round((p + +b.dataset.d) * 100) / 100); audio.play('key_click', { volume: 0.35 }); render(); }));
-      body.querySelector('#pm').addEventListener('click', () => { p = market; render(); });
+      body.querySelectorAll('[data-d]').forEach((b) => b.addEventListener('click', () => { p = Math.max(0.05, Math.round((p + +b.dataset.d) * 100) / 100); audio.play('key_click', { volume: 0.35, rate: +b.dataset.d > 0 ? 1.1 : 0.9 }); render(); }));
+      body.querySelectorAll('[data-set]').forEach((b) => b.addEventListener('click', () => { p = +b.dataset.set; audio.play('key_click', { volume: 0.35 }); render(); }));
       body.querySelector('#pok').addEventListener('click', () => { setPrice(s, key, p); onChange?.(); audio.play('paper', { volume: 0.5 }); this.closePanel(); });
     };
     this.openPanel('Price tag', '', { cls: 'tag-panel' });
@@ -320,62 +323,97 @@ export class UI {
   }
 
   // ---------- checkout ----------
+  /** How a customer pays cash: exact sometimes, otherwise rounded up the way people do. */
+  static cashTendered(total) {
+    const r = Math.random();
+    if (r < 0.12) return total;
+    const ups = [Math.ceil(total), Math.ceil(total / 5) * 5, Math.ceil(total / 10) * 10, Math.ceil(total / 20) * 20, Math.ceil(total / 50) * 50]
+      .filter((v, i, a) => v > total + 0.001 && a.indexOf(v) === i);
+    return ups[Math.min(ups.length - 1, Math.floor(Math.random() * Math.min(3, ups.length)))] ?? Math.ceil(total);
+  }
+
   checkout(c, total, onDone) {
     const name = esc(c.info.name);
-    if (c.payWith === 'card') {
-      let typed = '';
-      const render = () => {
-        this.el.body.innerHTML = `<div class="pay"><div class="register"><p class="who">${name} taps a card — key in the total.</p>
-          <div class="screen-lcd"><small>CARD</small>${typed ? money(+typed / 100) : '0.00'}</div>
-          <div class="lcd-row"><div><small>Total due</small>${money(total)}</div><div><small>Items</small>${c.basket.length}</div><div><small>Method</small>Card</div></div></div>
-          <div class="keypad">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 'C', 0, '✓'].map((k) => `<button data-k="${k}" class="${k === '✓' ? 'ok' : ''}">${k}</button>`).join('')}</div>
-          <p class="muted small" style="text-align:center;margin:0">Type the digits: 4 · 5 · 0 makes 4.50</p></div>`;
-        this.el.body.querySelectorAll('[data-k]').forEach((b) => b.addEventListener('click', () => {
-          const k = b.dataset.k;
-          audio.play('key_click', { volume: 0.45 });
-          if (k === 'C') typed = '';
-          else if (k === '✓') {
-            if (Math.abs(+typed / 100 - total) < 0.001) { this.closePanel(); onDone(total); return; }
-            this.toast('Not quite — check the total on the register.', 'i-coin', 2);
-            typed = '';
-          } else if (typed.length < 6) typed += k;
-          render();
-        }));
-      };
-      this.openPanel('Card payment', '', { icon: 'i-coin' });
-      render();
+    const items = c.basket.map((b) => `<li><span>${esc(productName(b.key))}</span><b>${money(b.price)}</b></li>`).join('');
+    const receipt = `<ul class="receipt">${items}<li class="sum"><span>Total</span><b>${money(total)}</b></li></ul>`;
+    if (c.payWith === 'card') return this.cardPayment(name, total, receipt, onDone);
+    const paid = Math.round(UI.cashTendered(total) * 100) / 100;
+    const due = Math.round((paid - total) * 100);          // in cents, to avoid float drift
+    if (due <= 0) {
+      let paidUp = false;
+      const go = () => { if (paidUp) return; paidUp = true; removeEventListener('keydown', key); this.closePanel(); onDone(total); };
+      const key = (e) => { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); go(); } };
+      this.openPanel('Cash payment', `<div class="pay"><div class="till"><div class="who">${name} pays the exact amount.</div>${receipt}<div class="lcd"><div><small>TOTAL</small>${money(total)}</div><div><small>RECEIVED</small>${money(paid)}</div><div class="ok"><small>CHANGE</small>0.00</div></div></div><div class="row"><span class="spacer"></span><button class="btn sage" id="give">${ico('i-check')}Take payment <kbd>Enter</kbd></button></div></div>`, { icon: 'i-coin', wide: true, onClose: () => removeEventListener('keydown', key) });
+      addEventListener('keydown', key);
+      this.el.body.querySelector('#give').addEventListener('click', go);
       return;
     }
-    const notes = [20, 10, 5];
-    const paid = notes.find((n, i) => n >= total && (notes[i + 1] === undefined || notes[i + 1] < total)) ?? Math.ceil(total / 5) * 5;
-    const due = Math.round((paid - total) * 100) / 100;
-    let given = 0;
-    const denoms = [10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05];
-    this.stack = [];
+    // small on the left, big on the right — like a real till drawer
+    const coins = [1, 2, 5, 10, 20, 50, 100, 200];
+    const notes = [500, 1000, 2000, 5000];
+    const label = (v) => (v < 100 ? `${v}¢` : `${v / 100}`);
+    let tray = [];
+    const sum = () => tray.reduce((a, b) => a + b, 0);
     const render = () => {
-      const left = Math.round((due - given) * 100) / 100;
-      this.el.body.innerHTML = `<div class="pay"><div class="register"><p class="who">${name} hands you ${money(paid)} — count out the change.</p>
-        <div class="screen-lcd"><small>CHANGE</small>${money(Math.max(0, left))}</div>
-        <div class="lcd-row"><div><small>Total</small>${money(total)}</div><div><small>Paid</small>${money(paid)}</div><div><small>Given</small>${money(given)}</div></div></div>
-        <div class="money">${denoms.map((d) => `<button class="${d < 1 ? 'coin' : ''}" data-v="${d}" ${d - left > 0.001 ? 'disabled' : ''}>${d < 1 ? Math.round(d * 100) + '¢' : d}</button>`).join('')}</div>
-        <div class="row"><button class="btn ghost small" id="undo">Undo</button><button class="btn ghost small" id="auto">Count it for me</button><span class="spacer"></span><button class="btn sage" id="give" ${Math.abs(left) > 0.001 ? 'disabled' : ''}>${ico('i-check')}Give change</button></div></div>`;
+      const given = sum();
+      const left = due - given;
+      const state = left === 0 ? 'ok' : left < 0 ? 'over' : '';
+      this.el.body.innerHTML = `<div class="pay cash">
+        <div class="till"><div class="who">${name} hands you <b>${money(paid)}</b>. Give back the change.</div>${receipt}
+          <div class="lcd"><div><small>TOTAL</small>${money(total)}</div><div><small>RECEIVED</small>${money(paid)}</div><div class="${state}"><small>${left < 0 ? 'TOO MUCH' : 'CHANGE DUE'}</small>${money(Math.abs(due - given) / 100)}</div><div><small>GIVEN</small>${money(given / 100)}</div></div></div>
+        <div class="tray" title="Click a coin or note to take it back">${tray.length ? tray.map((v, i) => `<button class="${v < 500 ? 'c' : 'n'} v${v}" data-i="${i}">${label(v)}</button>`).join('') : '<span>Change goes here — click money in the drawer</span>'}</div>
+        <div class="drawer"><div class="slots coins">${coins.map((v) => `<button class="c v${v}" data-v="${v}">${label(v)}</button>`).join('')}</div><div class="slots notes">${notes.map((v) => `<button class="n v${v}" data-v="${v}">${label(v)}</button>`).join('')}</div></div>
+        <div class="row"><button class="btn ghost small" id="clear">Clear</button><button class="btn ghost small" id="auto">Count it for me</button><span class="spacer"></span><button class="btn sage" id="give" ${state === 'ok' ? '' : 'disabled'}>${ico('i-check')}Give change <kbd>Enter</kbd></button></div></div>`;
       const body = this.el.body;
-      body.querySelectorAll('[data-v]').forEach((b) => b.addEventListener('click', () => { given = Math.round((given + +b.dataset.v) * 100) / 100; this.stack.push(+b.dataset.v); audio.play(+b.dataset.v < 1 ? 'coin_stack' : 'paper', { volume: 0.5 }); render(); }));
-      body.querySelector('#undo').addEventListener('click', () => { const v = this.stack.pop(); if (v) given = Math.round((given - v) * 100) / 100; render(); });
+      body.querySelectorAll('[data-v]').forEach((b) => b.addEventListener('click', () => { tray.push(+b.dataset.v); audio.play(+b.dataset.v < 500 ? 'coin_stack' : 'paper', { volume: 0.5, rate: 0.9 + Math.random() * 0.2 }); render(); }));
+      body.querySelectorAll('.tray [data-i]').forEach((b) => b.addEventListener('click', () => { tray.splice(+b.dataset.i, 1); audio.play('coins', { volume: 0.3 }); render(); }));
+      body.querySelector('#clear').addEventListener('click', () => { tray = []; render(); });
       body.querySelector('#auto').addEventListener('click', () => {
-        let rem = Math.round((due - given) * 100);
-        for (const d of denoms) { const c2 = Math.round(d * 100); while (rem >= c2) { rem -= c2; given = Math.round((given + d) * 100) / 100; this.stack.push(d); } }
+        tray = [];
+        let rem = due;
+        for (const v of [...notes, ...coins].sort((a, b) => b - a)) while (rem >= v) { rem -= v; tray.push(v); }
         audio.play('coins', { volume: 0.6 });
         render();
       });
-      body.querySelector('#give').addEventListener('click', () => { this.closePanel(); onDone(total); });
+      body.querySelector('#give').addEventListener('click', finish);
     };
-    if (due <= 0.001) {
-      this.openPanel('Cash payment', `<div class="pay"><div class="register"><p class="who">${name} pays exactly ${money(total)}.</p><div class="screen-lcd"><small>EXACT</small>${money(total)}</div></div><div class="row"><span class="spacer"></span><button class="btn sage" id="give">${ico('i-check')}Take payment</button></div></div>`, { icon: 'i-coin' })
-        .querySelector('#give').addEventListener('click', () => { this.closePanel(); onDone(total); });
-      return;
-    }
-    this.openPanel('Cash payment', '', { icon: 'i-coin' });
+    const finish = () => { if (sum() !== due) return; removeEventListener('keydown', key); audio.play('coins', { volume: 0.6 }); this.closePanel(); onDone(total); };
+    const key = (e) => { if (e.code === 'Enter') { e.preventDefault(); finish(); } else if (e.code === 'Backspace') { tray.pop(); render(); } };
+    addEventListener('keydown', key);
+    this.openPanel('Cash payment', '', { icon: 'i-coin', wide: true, onClose: () => removeEventListener('keydown', key) });
+    render();
+  }
+
+  cardPayment(name, total, receipt, onDone) {
+    let typed = '';
+    let wrong = false;
+    const render = () => {
+      const shown = typed ? money(+typed / 100) : '0.00';
+      this.el.body.innerHTML = `<div class="pay card"><div class="till"><div class="who">${name} pays by card. Key the total into the terminal.</div>${receipt}
+          <div class="lcd"><div><small>TOTAL</small>${money(total)}</div><div><small>METHOD</small>CARD</div></div></div>
+        <div class="terminal ${wrong ? 'shake' : ''}"><div class="t-screen"><small>AMOUNT</small><b>${shown}</b><span>${wrong ? 'Amount doesn’t match' : 'Enter amount, press OK'}</span></div>
+          <div class="t-keys">${[1, 2, 3, 4, 5, 6, 7, 8, 9, '⌫', 0, 'OK'].map((k) => `<button data-k="${k}" class="${k === 'OK' ? 'ok' : k === '⌫' ? 'del' : ''}">${k}</button>`).join('')}</div></div>
+        <p class="muted small" style="text-align:center;margin:0">Type digits (or use your keyboard): 4 · 5 · 0 makes 4.50</p></div>`;
+      this.el.body.querySelectorAll('[data-k]').forEach((b) => b.addEventListener('click', () => press(b.dataset.k)));
+    };
+    const press = (k) => {
+      audio.play('key_click', { volume: 0.45 });
+      wrong = false;
+      if (k === '⌫') typed = typed.slice(0, -1);
+      else if (k === 'OK') {
+        if (+typed === Math.round(total * 100)) { removeEventListener('keydown', key); audio.play('till_ding', { volume: 0.5, rate: 1.3 }); this.closePanel(); onDone(total); return; }
+        wrong = true;
+        typed = '';
+      } else if (typed.length < 6) typed = (typed + k).replace(/^0+/, '');
+      render();
+    };
+    const key = (e) => {
+      if (/^Digit\d$|^Numpad\d$/.test(e.code)) { e.preventDefault(); press(e.code.slice(-1)); }
+      else if (e.code === 'Backspace') { e.preventDefault(); press('⌫'); }
+      else if (e.code === 'Enter' || e.code === 'NumpadEnter') { e.preventDefault(); press('OK'); }
+    };
+    addEventListener('keydown', key);
+    this.openPanel('Card payment', '', { icon: 'i-coin', wide: true, onClose: () => removeEventListener('keydown', key) });
     render();
   }
 
@@ -419,9 +457,10 @@ export class UI {
   }
 
   // ---------- settings ----------
-  menu() {
+  menu({ title = false } = {}) {
     const st = audio.settings;
     const g = this.game;
+    const gpu = globalThis.__gpu;
     const q = g?.settings.quality || 'auto';
     const controls = this.input.touch
       ? 'Left stick to walk · drag to look · tap things (or <kbd>Use</kbd>) · <kbd>Back</kbd> takes one back · <kbd>Drop</kbd> puts a box down'
@@ -431,13 +470,15 @@ export class UI {
       ${['master', 'music', 'amb', 'sfx'].map((k) => `<label>${{ master: 'Master', music: 'Radio', amb: 'Ambience', sfx: 'Effects' }[k]}<input type="range" min="0" max="1" step="0.05" value="${st[k]}" data-vol="${k}"><output>${Math.round(st[k] * 100)}</output></label>`).join('')}
       <div class="section-title">${ico('i-sparkle')} Graphics</div>
       <label style="grid-template-columns:120px 1fr">Quality<span class="seg" id="quality">${['auto', 'low', 'medium', 'high'].map((m) => `<button data-q="${m}" class="${q === m ? 'on' : ''}">${m[0].toUpperCase() + m.slice(1)}</button>`).join('')}</span></label>
-      <p class="small muted" style="margin:-4px 0 0">Auto lowers the resolution and effects whenever the game would stutter. Running at <b id="fps-now">${Math.round(g?.post.fps || 0)} fps</b> on ${g?.post.tier || ''}.</p>
+      <p class="small muted" style="margin:-4px 0 0">Auto turns effects down whenever the game would stutter. Running at <b id="fps-now">${Math.round(g?.post.fps || 0)} fps</b> on ${g?.post.tier || ''}${gpu ? ` · ${esc(gpu.name.replace(/^ANGLE \((.*)\)$/, '$1').slice(0, 60))}` : ''}.</p>
+      ${gpu?.software ? '<p class="gpu-warn small">Your browser is drawing the game without your graphics card, so it will be slow. Turn on <b>“Use graphics acceleration when available”</b> in your browser settings and restart it.</p>' : ''}
+      <label class="check"><input type="checkbox" id="outlines" ${g?.settings.outlines ? 'checked' : ''}> Storybook ink outlines</label>
       <label class="check"><input type="checkbox" id="showfps" ${g?.settings.showFps ? 'checked' : ''}> Show frame rate</label>
       <div class="section-title">${ico('i-mouse-l')} Controls</div>
       <label class="check"><input type="checkbox" id="bob" ${this.headBob !== false ? 'checked' : ''}> Gentle head bob</label>
       ${this.input.touch ? '' : `<label>Mouse speed<input type="range" min="0.0008" max="0.005" step="0.0002" value="${this.input.sens}" id="sens"><output></output></label>`}
       <div class="controls-card">${controls}</div>
-      <div class="row"><button class="btn small" id="photo">${ico('i-camera')}Photo mode</button><button class="btn small ghost" id="tut">Replay tutorial</button><button class="btn small ghost" id="credits">Credits</button><span class="spacer"></span><button class="btn small ghost" id="quit">Save &amp; quit</button></div></div>`;
+      ${title ? '' : `<div class="row"><button class="btn small" id="photo">${ico('i-camera')}Photo mode</button><button class="btn small ghost" id="tut">Replay tutorial</button><button class="btn small ghost" id="credits">Credits</button><span class="spacer"></span><button class="btn small ghost" id="quit">Save &amp; quit</button></div>`}</div>`;
     const body = this.openPanel('Settings', html, { icon: 'i-gear' });
     body.querySelectorAll('[data-vol]').forEach((r) => r.addEventListener('input', () => { st[r.dataset.vol] = +r.value; r.nextElementSibling.textContent = Math.round(r.value * 100); audio.applySettings(); this.onSettings?.(); }));
     body.querySelectorAll('[data-q]').forEach((b) => b.addEventListener('click', () => {
@@ -445,8 +486,10 @@ export class UI {
       this.onQuality?.(b.dataset.q);
     }));
     body.querySelector('#showfps').addEventListener('change', (e) => { if (g) g.settings.showFps = e.target.checked; this.onSettings?.(); });
+    body.querySelector('#outlines').addEventListener('change', (e) => { if (g) { g.settings.outlines = e.target.checked; g.post.setOutlines(e.target.checked); } this.onSettings?.(); });
     body.querySelector('#bob').addEventListener('change', (e) => { this.headBob = e.target.checked; this.onSettings?.(); });
     body.querySelector('#sens')?.addEventListener('input', (e) => { this.input.sens = +e.target.value; this.onSettings?.(); });
+    if (title) return;
     body.querySelector('#photo').addEventListener('click', () => { this.closePanel(); this.onPhoto?.(); });
     body.querySelector('#tut').addEventListener('click', () => { this.closePanel(); this.onReplayTutorial?.(); });
     body.querySelector('#quit').addEventListener('click', () => { this.closePanel(); this.onQuit?.(); });

@@ -106,6 +106,31 @@ export class World {
     this.village = await buildVillage(s, this.colliders);
     // merge everything that never moves: hundreds of draw calls become a few dozen
     this.bakeStats = [bakeStatic(this.shop.root), bakeStatic(this.village.root), bakeStatic(this.shop.studio)];
+    // High quality: one warm key light over the shop floor casts soft shadows (it stands in for the main lamp)
+    const main = this.shop.lights[0];
+    const key = new THREE.SpotLight('#ffb766', 0, 13, 1.25, 0.75, 1.5);
+    key.position.set(main.position.x + 0.6, main.position.y + 0.45, main.position.z);
+    key.target.position.set(main.position.x + 0.6, 0, main.position.z);
+    key.castShadow = true;
+    key.shadow.mapSize.set(1024, 1024);
+    key.shadow.bias = -0.0004;
+    key.shadow.normalBias = 0.025;
+    key.shadow.radius = 3;
+    key.shadow.camera.near = 0.3;
+    key.shadow.camera.far = 6;
+    key.visible = false;
+    key.userData.base = 9;
+    s.add(key, key.target);
+    this.keyLight = key;
+    for (const root of [this.shop.root, this.shop.studio]) {
+      root.traverse((o) => {
+        if (!o.isMesh || o.layers.mask === 4) return;
+        const m = Array.isArray(o.material) ? o.material[0] : o.material;
+        if (!m || m.transparent || m.isMeshBasicMaterial) return;
+        o.castShadow = true;
+        o.receiveShadow = true;
+      });
+    }
     onProgress?.(0.9);
     // hitboxes are added to the scene through their parents; keep a flat list for raycasting
     this.windows = this.village.windows;
@@ -192,6 +217,8 @@ export class World {
     this.inside = lerp(a.inside, b.inside, k);
     this.winK = lerp(a.win, b.win, k);
     this.nightK = this.starMat.opacity;
+    // image-based fill: bright and neutral by day, a faint touch at night so lamps carry the room
+    this.scene.environmentIntensity = lerp(0.55, 0.14, this.nightK) * (1 - rain * 0.3);
   }
 
   update(dt, { hour, playerPos }) {
@@ -204,6 +231,7 @@ export class World {
     // interior lights follow the mood, with a tiny candle flicker
     const flick = 1 + Math.sin(this.t * 7.3) * 0.025 + Math.sin(this.t * 17.1) * 0.015;
     for (const l of this.shop.lights) l.intensity = (l.userData.base ??= l.intensity) * (0.35 + 0.65 * this.inside) * flick;
+    if (this.keyLight.visible) this.keyLight.intensity = this.keyLight.userData.base * (0.35 + 0.65 * this.inside) * flick;
     this.shop.porchLight.intensity = 5 * Math.max(0.15, this.inside) * flick;
 
     // village windows
@@ -368,9 +396,12 @@ export class World {
   }
 
   /** Quality tiers decide how many real lights we can afford. */
-  setLightBudget(n) {
+  setLightBudget(n, shadows = false) {
     const L = this.shop.lights;
     L.forEach((l, i) => { l.visible = i < Math.min(n, L.length); });
+    // with shadows on, the shadow-casting key light takes over from the main lamp
+    this.keyLight.visible = shadows;
+    if (shadows) L[0].visible = false;
     this.shop.porchLight.visible = n >= 3;
     // the brightest light stretches further when it's carrying the room alone
     L[0].distance = n <= 2 ? 14 : 11;

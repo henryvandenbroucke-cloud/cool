@@ -82,6 +82,7 @@ export class Staff {
     for (const id of state.staff) {
       if (this.helpers.has(id)) continue;
       const root = await placeable(`people/${STAFF[id].model}.glb`, { height: HEIGHT });
+      root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
       const h = new Helper(this.game, id, root);
       root.position.copy(id === 'wren' ? this.game.world.shop.anchors.playerBehindCounter : new THREE.Vector3(0.4, 0, -2.4));
       root.rotation.y = id === 'wren' ? -Math.PI / 2 : 0;

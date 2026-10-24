@@ -14,6 +14,7 @@ import { Guide } from './guide.js';
 import { NavGrid } from './nav.js';
 import { UI, money, productIcon } from './ui.js';
 import { audio } from './audio.js';
+import { litMat } from './render.js';
 import { deliveryBox, setBoxOpen, productMesh, updateFlames } from './products.js';
 import { tween, tickTweens, ease, damp, popIn } from './tween.js';
 import { SHIFT_SECONDS, SUPPLIES, REGULARS, WEATHERS, DECOR, EXPANSIONS } from './config.js';
@@ -45,7 +46,7 @@ export class Game {
     this.fpsT = 0;
     this.hourVis = 17;
     this.running = false;
-    this.settings = { quality: 'auto', showFps: false };
+    this.settings = { quality: 'auto', showFps: false, outlines: false };
     this.flags = {};
   }
 
@@ -144,7 +145,8 @@ export class Game {
     audio.loop('amb_river', { volume: 0.18, outdoor: true });
     audio.loop('clock_tick', { volume: 0.22, pos: this.world.shop.clock.pos });
     audio.loop('fire_loop', { volume: 0.08, pos: this.world.shop.stations.candle.pot });
-    if (!audio.radio.el) setTimeout(() => this.ui.radioToast(audio.radioPlay(0), true), 1600);
+    // the radio starts quietly; during the tutorial it doesn't announce itself
+    if (!audio.radio.el) setTimeout(() => { const tr = audio.radioPlay(0); if (this.state.tutorialDone) this.ui.radioToast(tr, true); }, 1600);
     this.updateAmbience(true);
     this.ui.resumePointer();
   }
@@ -173,11 +175,12 @@ export class Game {
       if (s.headBob === false) { this.player.headBob = false; this.ui.headBob = false; }
       this.settings.quality = s.quality || 'auto';
       this.settings.showFps = !!s.showFps;
+      this.settings.outlines = !!s.outlines;
     } catch { /* defaults */ }
   }
   saveSettings() {
     this.player.headBob = this.ui.headBob !== false;
-    try { localStorage.setItem('lantern-lens:settings', JSON.stringify({ audio: audio.settings, sens: this.input.sens, headBob: this.player.headBob, quality: this.settings.quality, showFps: this.settings.showFps })); } catch { /* ignore */ }
+    try { localStorage.setItem('lantern-lens:settings', JSON.stringify({ audio: audio.settings, sens: this.input.sens, headBob: this.player.headBob, quality: this.settings.quality, showFps: this.settings.showFps, outlines: this.settings.outlines })); } catch { /* ignore */ }
   }
 
   // ---------------- input ----------------
@@ -202,6 +205,7 @@ export class Game {
     document.getElementById('photo-filter').addEventListener('click', (e) => {
       this.photo.filter = (this.photo.filter + 1) % 3;
       this.post.ink.uniforms.uFilter.value = this.photo.filter;
+      this.post.filter = this.photo.filter > 0;
       e.target.textContent = `Filter: ${['Warm', 'Sepia', 'Moonlight'][this.photo.filter]}`;
     });
     document.addEventListener('visibilitychange', () => {
@@ -508,7 +512,7 @@ export class Game {
     const h = this.held;
     if (h?.type !== 'crate') return;
     h.mesh.clear();
-    const tray = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.12, 0.34), new THREE.MeshToonMaterial({ color: '#a8754c' }));
+    const tray = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.12, 0.34), litMat({ color: '#a8754c' }));
     tray.position.y = -0.02;
     h.mesh.add(tray);
     const keys = this.state.crafted.filter((x) => x.startsWith(h.id));
@@ -543,8 +547,8 @@ export class Game {
     this.updateHeld();
   }
 
-  onCrafted(key, stars) {
-    this.ui.toast(`${productName(key)} <span style="color:#d9822b">${'★'.repeat(stars)}</span> — it’s waiting in the crate.`, productIcon(key));
+  onCrafted() {
+    // the bench shows its own reveal; just keep the save current
     save(this.state);
   }
 
@@ -674,11 +678,11 @@ export class Game {
     const s = this.state;
     const notes = [...s.letters.map((l) => ({ c: l.read ? '#e9def8' : '#f3e2ff' })), ...s.wishes.map(() => ({ c: '#fff6d6' }))].slice(0, 10);
     notes.forEach((n, i) => {
-      const p = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.15), new THREE.MeshToonMaterial({ color: n.c }));
+      const p = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.15), litMat({ color: n.c }));
       p.position.set(-0.48 + (i % 5) * 0.24, 0.2 - Math.floor(i / 5) * 0.3, 0.001 * i);
       p.rotation.z = ((i * 7) % 5 - 2) * 0.05;
       pins.add(p);
-      const pin = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 5), new THREE.MeshToonMaterial({ color: '#b85a4c' }));
+      const pin = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 5), litMat({ color: '#b85a4c' }));
       pin.position.set(p.position.x, p.position.y + 0.06, 0.012);
       pins.add(pin);
     });
@@ -712,6 +716,7 @@ export class Game {
     } else {
       this.player.frozen = false;
       this.post.ink.uniforms.uFilter.value = 0;
+      this.post.filter = false;
     }
   }
 

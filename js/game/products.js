@@ -3,7 +3,7 @@
 
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { toon, glow, textures, LAYER_NO_INK } from './render.js';
+import { toon, glow, textures, litMat, LAYER_NO_INK } from './render.js';
 import { parseKey } from './state.js';
 import { CANDLE_COLORS, LAMP_BASES, LAMP_FILTERS, STOCK, SUPPLIES, GLASS_PATTERNS, GLASS_COLORS } from './config.js';
 
@@ -16,7 +16,7 @@ const mat = (hex, opts) => {
 };
 const glassMat = (hex = '#cfe3dc', opacity = 0.38) => {
   const k = 'glass' + hex + opacity;
-  if (!mats.has(k)) mats.set(k, new THREE.MeshToonMaterial({ color: hex, transparent: true, opacity, depthWrite: false, gradientMap: mat('#fff').gradientMap }));
+  if (!mats.has(k)) mats.set(k, litMat({ color: hex, transparent: true, opacity, depthWrite: false }));
   return mats.get(k);
 };
 
@@ -76,7 +76,7 @@ function pillar(colorHex, { lit = false, h = 0.12, r = 0.042 } = {}) {
   return g;
 }
 
-function taperPair(colorHex) {
+function taperPair(colorHex, lit = false) {
   const g = new THREE.Group();
   const holder = mesh(new THREE.LatheGeometry([V(0, 0), V(0.05, 0), V(0.052, 0.008), V(0.03, 0.012), V(0, 0.012)], 24), mat('#a8aca2'));
   holder.scale.set(1.5, 1, 0.8);
@@ -88,11 +88,12 @@ function taperPair(colorHex) {
     const w = mesh(new THREE.CylinderGeometry(0.0018, 0.0018, 0.012, 5), mat('#3b2a20'));
     w.position.set(x, 0.197, 0);
     g.add(w);
+    if (lit) { const f = flame(0.8); f.position.set(x, 0.204, 0); g.add(f); }
   }
   return g;
 }
 
-function jarCandle(colorHex) {
+function jarCandle(colorHex, lit = false) {
   const g = new THREE.Group();
   const wax = mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.06, 24), mat(colorHex));
   wax.position.y = 0.032;
@@ -105,13 +106,14 @@ function jarCandle(colorHex) {
   const wick = mesh(new THREE.CylinderGeometry(0.002, 0.002, 0.014, 5), mat('#3b2a20'));
   wick.position.y = 0.068;
   g.add(wick);
+  if (lit) { const f = flame(); f.position.y = 0.075; g.add(f); }
   return g;
 }
 
 export function candle(form, color, { lit = false } = {}) {
   const hex = CANDLE_COLORS[color]?.hex ?? '#f3e6c8';
-  if (form === 'taper') return taperPair(hex);
-  if (form === 'jar') return jarCandle(hex);
+  if (form === 'taper') return taperPair(hex, lit);
+  if (form === 'jar') return jarCandle(hex, lit);
   return pillar(hex, { lit });
 }
 
@@ -165,7 +167,7 @@ function lighten(hex, k) { return '#' + new THREE.Color(hex).lerp(new THREE.Colo
 function matchbox() {
   const g = new THREE.Group();
   const tex = textures.label('MATCH', { bg: '#c8463b', fg: '#fff3dc', border: '#8d2c25', size: 40 });
-  const top = new THREE.MeshToonMaterial({ map: tex, gradientMap: mat('#fff').gradientMap });
+  const top = litMat({ map: tex });
   const side = mat('#e7d6b4');
   const box = mesh(new RoundedBoxGeometry(0.075, 0.022, 0.05, 2, 0.004), [side, side, top, side, side, side]);
   box.position.y = 0.011;
@@ -375,7 +377,7 @@ export function deliveryBox(key, { open = false } = {}) {
   tape.position.y = 0.301;
   g.add(tape);
   if (!labelCache.has(key)) {
-    labelCache.set(key, new THREE.MeshToonMaterial({ map: textures.label(`${info?.icon ?? ''} ${info?.name ?? key}`, { size: 30, w: 320, h: 96 }), gradientMap: mat('#fff').gradientMap }));
+    labelCache.set(key, litMat({ map: textures.label(`${info?.icon ?? ''} ${info?.name ?? key}`, { size: 30, w: 320, h: 96 }) }));
   }
   const label = mesh(new THREE.PlaneGeometry(0.3, 0.09), labelCache.get(key));
   label.position.set(0, 0.16, 0.181);

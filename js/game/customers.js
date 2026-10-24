@@ -5,14 +5,18 @@ import * as THREE from 'three';
 import { placeable } from './assets.js';
 import { audio } from './audio.js';
 import { NavGrid } from './nav.js';
-import { damp, rng } from './tween.js';
+import { damp, rng, tween, ease } from './tween.js';
+import { productMesh } from './products.js';
+import { litMat } from './render.js';
 import {
   REGULARS, GENERIC_MODELS, GENERIC_NAMES, GENERIC_WANTS, WEATHERS, SHIFT_SECONDS, LAST_ARRIVAL_HOUR,
 } from './config.js';
 import { keyMatches, buyChance, priceFor, marketPrice, productCategory, levelFor, addWish, clockHour, wishLabel, productName, coziness, cozyBonus, seasonFor } from './state.js';
 import { LAYER_NO_INK } from './render.js';
 
-const SPEED = 1.15;
+const SPEED = 1.35;
+const WALK_CLIP_SPEED = 1.15;   // ground speed the walk clip was animated for
+const BAG_COLORS = ['#c9a77a', '#b85a4c', '#5f8f6c', '#d9c49e', '#6a7fa8', '#a8754c'];
 const HEIGHT = 1.5;
 
 function bubbleTexture(text) {
@@ -56,6 +60,13 @@ class Customer {
     this.root.add(this.bubble);
     this.bubbleT = 0;
     this.patience = 0;
+    this.v = 0;
+    this.t = Math.random() * 10;
+    // a tote bag on the shoulder; what they pick up goes in here
+    this.bag = makeBag(BAG_COLORS[Math.floor(Math.random() * BAG_COLORS.length)]);
+    const half = (model.userData.size?.x ?? 0.4) / 2;
+    this.bag.position.set(Math.min(0.32, half * 0.85 + 0.05), HEIGHT * 0.36, 0.02);
+    this.root.add(this.bag);
   }
 
   get pos() { return this.root.position; }
@@ -103,6 +114,13 @@ class Customer {
   }
 
   update(dt) {
+    this.t += dt;
+    const walking = this.current === this.actions.walk;
+    if (!walking || !this.path.length) this.v = damp(this.v, 0, 8, dt);
+    if (this.actions.walk) this.actions.walk.timeScale = Math.max(0.4, this.v / WALK_CLIP_SPEED);
+    this.bag.rotation.z = Math.sin(this.t * 8.5) * 0.09 * Math.min(1, this.v);
+    if (this.bag.userData.bounce > 0) { this.bag.userData.bounce = Math.max(0, this.bag.userData.bounce - dt * 4); this.bag.position.y = HEIGHT * 0.36 - Math.sin(this.bag.userData.bounce * Math.PI) * 0.03; }
+    this.bag.rotation.x = Math.sin(this.t * 4.25) * 0.05 * Math.min(1, this.v);
     this.mixer.update(dt);
     if (this.bubbleT > 0) {
       this.bubbleT -= dt;
@@ -135,9 +153,12 @@ class Customer {
         } else {
           this.play('walk');
           this.blockedT = 0;
-          const step = Math.min(dist, this.speed * dt);
+          // ease into a stroll and slow down for the final step instead of snapping
+          const want = Math.min(this.speed, 0.35 + dist * 2.2 * (this.path.length > 1 ? 4 : 1));
+          this.v = damp(this.v, want, 5, dt);
+          const step = Math.min(dist, this.v * dt);
           this.pos.addScaledVector(ahead, step);
-          this.face(target, dt, 9);
+          this.face(target, dt, 7);
         }
       }
     }
@@ -173,17 +194,18 @@ export class Customers {
     const weatherBoost = s.weather === 'clear' ? 1 : 0.9;
     const festival = s.festival === 'tonight';
     const cozy = Math.floor(coziness(s) / 8);
-    const base = (8 + lv * 3 + Math.min(8, s.night * 1.5) + cozy) * weatherBoost * (festival ? 1.5 : 1);
-    const total = Math.min(festival ? 40 : 32, Math.round(base));
+    const base = (15 + lv * 4 + Math.min(10, s.night * 1.5) + cozy) * weatherBoost * (festival ? 1.4 : 1);
+    const total = Math.min(festival ? 56 : 44, Math.round(base));
     // on festival night every regular comes by
     const regs = Object.entries(REGULARS).filter(([, r]) => festival || r.from <= s.night).map(([id]) => id).filter(() => festival || this.r() < 0.8);
     const arrivals = [];
     const last = ((LAST_ARRIVAL_HOUR + 24 - 18) / 12) * SHIFT_SECONDS;
-    for (let i = 0; i < total; i++) arrivals.push({ at: 12 + this.r() * (last - 12), regular: null });
+    // the evening rush is a little busier than the small hours
+    for (let i = 0; i < total; i++) arrivals.push({ at: 5 + Math.pow(this.r(), 1.15) * (last - 5), regular: null });
     regs.forEach((id, i) => { if (arrivals[i]) arrivals[i].regular = id; });
     arrivals.sort((a, b) => a.at - b.at);
     // the very first visitor of the very first night arrives promptly
-    if (s.night === 1 && arrivals[0]) { arrivals[0].at = 8; arrivals[0].regular = 'mira'; }
+    if (s.night === 1 && arrivals[0]) { arrivals[0].at = 4; arrivals[0].regular = 'mira'; }
     this.schedule = arrivals;
     this.usedNames = new Set();
   }
@@ -221,10 +243,11 @@ export class Customers {
     this.pending++;
     const model = await placeable(`people/${info.model}.glb`, { height: HEIGHT }).finally(() => { this.pending--; });
     if (this.getState() !== s) return; // the save changed while loading
+    model.traverse((o) => { if (o.isMesh) o.castShadow = true; });
     const c = new Customer(this, model, info);
     const fromLeft = this.r() < 0.5;
     const laneZ = this.world.village.laneZ;
-    c.pos.set(fromLeft ? -24 : 24, 0, laneZ + (this.r() - 0.5) * 0.8);
+    c.pos.set(fromLeft ? -15 : 15, 0, laneZ + (this.r() - 0.5) * 0.8);
     this.scene.add(model);
     this.list.push(c);
     s.tonight.customers++;
@@ -287,8 +310,11 @@ export class Customers {
     if (this.r() <= buyChance(price, market, bonus)) {
       c.play('pick-up', { once: true, fade: 0.15 });
       audio.play(d.key.startsWith('lamp') || d.key.includes('jar') ? 'place_glass' : 'place_wood', { pos: c.pos, volume: 0.5 });
+      const sec = this.shelves.sections.get(sectionId);
+      const from = sec.holder.getWorldPosition(new THREE.Vector3());
       const taken = this.shelves.take(sectionId);
       c.basket.push({ key: taken.key, price });
+      this.intoBag(c, taken.key, from);
       if (price / market <= 0.95 && this.r() < 0.5) c.say('♥', 1.4);
       c.state = 'ponder';
       c.timer = 0.9;
@@ -301,6 +327,31 @@ export class Customers {
       c.timer = 1.4;
       c.after = () => this.nextWant(c);
     }
+  }
+
+  /** The picked item arcs from the shelf into the customer's bag. */
+  intoBag(c, key, from) {
+    const item = productMesh(key, { on: false });
+    item.position.copy(from);
+    item.scale.setScalar(0.001);
+    this.scene.add(item);
+    tween({
+      duration: 0.6, delay: 0.25, easing: ease.inOutCubic,
+      update: (k) => {
+        const to = c.bag.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0.12, 0));
+        item.position.lerpVectors(from, to, k);
+        item.position.y += Math.sin(k * Math.PI) * 0.25;
+        item.scale.setScalar(k < 0.15 ? k / 0.15 : 1 - (k - 0.15) * 0.55);
+        item.rotation.y = k * 3;
+      },
+      done: () => {
+        item.parent?.remove(item);
+        audio.play('paper', { pos: c.pos, volume: 0.35 });
+        const n = c.basket.length;
+        c.bag.userData.body.scale.set(1 + n * 0.05, 1, 1 + n * 0.12);
+        c.bag.userData.bounce = 1;
+      },
+    });
   }
 
   finishBrowsing(c) {
@@ -390,7 +441,7 @@ export class Customers {
   update(dt, s, playerPos) {
     this.playerPos.copy(playerPos);
     if (s.phase === 'shift') {
-      while (this.schedule.length && this.schedule[0].at <= s.clock && this.inside() < 5) {
+      while (this.schedule.length && this.schedule[0].at <= s.clock && this.inside() < 7) {
         const e = this.schedule.shift();
         this.spawn(e);
       }
@@ -419,3 +470,15 @@ export class Customers {
 }
 
 function shuffle(a, r) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+function makeBag(color) {
+  const g = new THREE.Group();
+  const cloth = litMat({ color, roughness: 0.95 });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.19, 0.07), cloth);
+  body.position.y = -0.1;
+  const strap = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.008, 6, 16, Math.PI), cloth);
+  strap.position.y = -0.005;
+  g.add(body, strap);
+  g.userData.body = body;
+  return g;
+}

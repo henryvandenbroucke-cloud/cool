@@ -1,7 +1,8 @@
 // Boot: renderer, title screen with three save slots, then the frame loop.
 
 import * as THREE from 'three';
-import { createRenderer, createComposer } from './game/render.js';
+import { createRenderer, createComposer, gpuInfo } from './game/render.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { Input } from './game/input.js';
 import { Game } from './game/game.js';
 import { audio } from './game/audio.js';
@@ -25,6 +26,13 @@ async function boot() {
     return;
   }
   const scene = new THREE.Scene();
+  // soft image-based light so materials read as real surfaces, not flat paint
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  pmrem.dispose();
+  scene.environmentIntensity = 0.2;
+  const gpu = gpuInfo(renderer);
+  window.__gpu = gpu;
   const camera = new THREE.PerspectiveCamera(mobile ? 72 : 66, innerWidth / innerHeight, 0.05, 125);
   camera.layers.enable(1);
   const post = createComposer(renderer, scene, camera, { mobile });
@@ -49,23 +57,54 @@ async function boot() {
   }
   clearInterval(lineTimer);
   await game.applyState(newGame(0));
-  post.onChange = (tier, t) => { game.world.setLightBudget(t.lights); game.ui?.setQualityLabel?.(post); };
+  post.onChange = (tier, t) => {
+    const shadows = !!t.shadows;
+    if (renderer.shadowMap.enabled !== shadows) {
+      renderer.shadowMap.enabled = shadows;
+      scene.traverse((o) => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => { m.needsUpdate = true; }); });
+    }
+    game.world.setLightBudget(t.lights, shadows);
+  };
+  post.outlines = !!game.settings?.outlines;
   post.setMode(game.settings?.quality || 'auto');
 
-  // idle title camera: slowly drift over the village
+  // title camera: a slow cinematic drift past the shop front, framed to the right of the menu
   let titleT = 0;
   const titleCam = (dt) => {
     titleT += dt;
-    const a = Math.sin(titleT * 0.06) * 0.35;
-    camera.position.set(2.4 + Math.sin(a) * 6, 2.6 + Math.sin(titleT * 0.1) * 0.15, 12.2 - Math.abs(Math.sin(a)) * 1.5);
-    camera.lookAt(0.6, 2.0, 2.5);
-    game.world.update(dt, { hour: 21, playerPos: camera.position });
+    const a = Math.sin(titleT * 0.05);
+    const wide = innerWidth > 720;
+    camera.position.set(6.2 + a * 2.2, 2.0 + Math.sin(titleT * 0.09) * 0.12, 11.6 - a * 0.8);
+    camera.lookAt(wide ? -0.6 + a * 0.5 : 1.8, 1.7, 3.2);
+    game.world.update(dt, { hour: 21.5, playerPos: camera.position });
   };
 
-  const showSlots = () => {
+  const sub = (title, show) => {
+    $('menu').hidden = true;
+    $('menu-sub').hidden = false;
+    $('menu-sub-title').textContent = title;
+    $('slots').hidden = show !== 'slots';
+    $('menu-how').hidden = show !== 'how';
+  };
+  const latestSlot = () => {
+    let best = null;
+    for (let i = 0; i < 3; i++) { const sum = slotSummary(i); if (sum && (!best || (sum.savedAt || 0) > (best.sum.savedAt || 0))) best = { i, sum }; }
+    return best;
+  };
+  const showMenu = () => {
     $('loading').hidden = true;
+    $('menu-sub').hidden = true;
+    $('menu').hidden = false;
+    const last = latestSlot();
+    $('m-continue').hidden = !last;
+    if (last) $('m-continue-sub').textContent = `Shop ${last.i + 1} · Night ${last.sum.night} · ${last.sum.lit} windows lit`;
+    $('m-play').querySelector('small').textContent = last ? 'New shop or another save' : 'Open your little light shop';
+    if (!last) $('m-play').classList.add('primary'); else $('m-play').classList.remove('primary');
+    if (window.__gpu?.software) $('gpu-warn').hidden = false;
+  };
+  const showSlots = () => {
+    sub('Your shops', 'slots');
     const wrap = $('slots');
-    wrap.hidden = false;
     wrap.innerHTML = '';
     for (let i = 0; i < 3; i++) {
       const sum = slotSummary(i);
@@ -88,20 +127,31 @@ async function boot() {
       d.textContent = 'Really delete?';
     }));
   };
+  $('m-continue').addEventListener('click', () => { const last = latestSlot(); if (last) begin(last.i); });
+  $('m-play').addEventListener('click', showSlots);
+  $('m-settings').addEventListener('click', () => { audio.start(); game.ui.menu({ title: true }); });
+  $('m-how').addEventListener('click', () => sub('How to play', 'how'));
+  $('m-credits').addEventListener('click', () => game.ui.credits());
+  $('m-back').addEventListener('click', showMenu);
+  document.body.classList.add('on-title');
 
   let playing = false;
+  let starting = false;
   const begin = async (slot) => {
+    if (starting) return;
+    starting = true;
     await audio.start();
     const state = load(slot) || newGame(slot);
     save(state);
     $('fade').classList.add('on');
     await new Promise((r) => setTimeout(r, 650));
     $('title').classList.remove('is-open');
+    document.body.classList.remove('on-title');
     await game.applyState(state);
     game.start();
     playing = true;
+    starting = false;
     $('fade').classList.remove('on');
-    if (!state.tutorialDone && state.night === 1) game.ui.toast('Welcome to your little light shop! Follow the glowing path.', 'i-candle', 4.5);
   };
 
   game.onQuit = async () => {
@@ -112,12 +162,13 @@ async function boot() {
     input.exitLock();
     playing = false;
     $('title').classList.add('is-open');
-    showSlots();
+    document.body.classList.add('on-title');
+    showMenu();
     $('fade').classList.remove('on');
   };
 
   if (input.touch) document.querySelector('.title-foot').textContent = 'Best with headphones · left stick to walk · drag to look · tap things to use them';
-  showSlots();
+  showMenu();
 
   const clock = new THREE.Clock();
   const frame = () => {
