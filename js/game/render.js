@@ -45,6 +45,8 @@ export const REMAP = {
 };
 
 const matCache = new Map();
+/** Every converted toon material that came from a Kenney material with this name. */
+export function materialsNamed(name) { return [...matCache.values()].filter((m) => m.name === name); }
 /** Convert any loaded material into a shared toon material. */
 export function toToon(src, { remap = true } = {}) {
   const k = src.uuid + (remap ? 'r' : '');
@@ -161,6 +163,10 @@ export const textures = {
       g.beginPath(); g.ellipse(rand() * w, rand() * h, 8 + rand() * 18, 6 + rand() * 12, rand() * 3, 0, Math.PI * 2); g.fill();
     }
   }, { repeat }),
+  snow: (repeat) => canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = '#eef3f8'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 900; i++) { g.fillStyle = rand() < 0.5 ? 'rgba(200,215,235,.45)' : 'rgba(255,255,255,.7)'; g.beginPath(); g.arc(rand() * w, rand() * h, 1 + rand() * 4, 0, Math.PI * 2); g.fill(); }
+  }, { repeat }),
   cork: () => canvasTex(128, 128, (g, w, h) => {
     g.fillStyle = '#b98c5c'; g.fillRect(0, 0, w, h);
     for (let i = 0; i < 700; i++) { g.fillStyle = rand() < 0.5 ? 'rgba(120,80,40,.35)' : 'rgba(230,190,140,.3)'; g.fillRect(rand() * w, rand() * h, 2, 2); }
@@ -224,6 +230,7 @@ const InkShader = {
     tDiffuse: { value: null },
     tNormal: { value: null },
     uRes: { value: new THREE.Vector2(1, 1) },
+    uNRes: { value: new THREE.Vector2(1, 1) },
     uThickness: { value: 1.0 },
     uInk: { value: new THREE.Color('#2a1c18') },
     uStrength: { value: 0.85 },
@@ -234,13 +241,13 @@ const InkShader = {
   },
   vertexShader: /* glsl */`varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
   fragmentShader: /* glsl */`
-    uniform sampler2D tDiffuse; uniform sampler2D tNormal; uniform vec2 uRes; uniform float uThickness;
+    uniform sampler2D tDiffuse; uniform sampler2D tNormal; uniform vec2 uRes; uniform vec2 uNRes; uniform float uThickness;
     uniform vec3 uInk; uniform float uStrength; uniform float uVignette; uniform float uWarm; uniform float uTime; uniform int uFilter;
     varying vec2 vUv;
     float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233))) * 43758.5453); }
     void main(){
       vec4 col = texture2D(tDiffuse, vUv);
-      vec2 px = uThickness / uRes;
+      vec2 px = uThickness / uNRes;
       vec4 c = texture2D(tNormal, vUv);
       vec4 l = texture2D(tNormal, vUv - vec2(px.x, 0.0));
       vec4 r = texture2D(tNormal, vUv + vec2(px.x, 0.0));
@@ -269,10 +276,19 @@ const InkShader = {
     }`,
 };
 
-export function createRenderer(canvas, { mobile = false } = {}) {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', preserveDrawingBuffer: false });
-  const dpr = Math.min(window.devicePixelRatio || 1, mobile ? 1.5 : 1.75);
-  renderer.setPixelRatio(dpr);
+// ---------- Quality ----------
+// Tiers trade fidelity for speed. 'auto' starts at medium and walks the
+// render scale (and then the tier) up or down from measured frame times.
+export const TIERS = {
+  high:   { dpr: 1.5, scale: 1, ink: true, inkRes: 1, bloom: true, bloomDiv: 2, lights: 4 },
+  medium: { dpr: 1.0, scale: 1, ink: true, inkRes: 0.5, bloom: true, bloomDiv: 4, lights: 3 },
+  low:    { dpr: 1.0, scale: 0.75, ink: false, inkRes: 0.5, bloom: false, bloomDiv: 4, lights: 2 },
+};
+const ORDER = ['low', 'medium', 'high'];
+
+export function createRenderer(canvas) {
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', preserveDrawingBuffer: false, stencil: false });
+  renderer.setPixelRatio(1);
   renderer.setSize(window.innerWidth, window.innerHeight, false);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.NeutralToneMapping;
@@ -281,18 +297,16 @@ export function createRenderer(canvas, { mobile = false } = {}) {
 }
 
 export function createComposer(renderer, scene, camera, { mobile = false } = {}) {
-  const size = renderer.getDrawingBufferSize(new THREE.Vector2());
-  const rt = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: mobile ? 0 : 4 });
+  const v2 = new THREE.Vector2();
+  const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 0 });
   const composer = new EffectComposer(renderer, rt);
   composer.setPixelRatio(1);
-  composer.setSize(size.x, size.y);
-  const nd = new NormalDepthPass(scene, camera, size.x, size.y);
+  const nd = new NormalDepthPass(scene, camera, 1, 1);
   const renderPass = new RenderPass(scene, camera);
   const ink = new ShaderPass(InkShader);
   ink.uniforms.tNormal.value = nd.target.texture;
-  ink.uniforms.uRes.value.set(size.x, size.y);
-  ink.uniforms.uThickness.value = Math.max(1, size.y / 900);
-  const bloom = new UnrealBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), 0.55, 0.6, 0.86);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.55, 0.6, 0.86);
+  const bloomSetSize = bloom.setSize.bind(bloom);
   composer.addPass(nd);
   composer.addPass(renderPass);
   composer.addPass(bloom);
@@ -301,20 +315,70 @@ export function createComposer(renderer, scene, camera, { mobile = false } = {})
 
   const api = {
     composer, ink, bloom,
-    resize() {
+    mode: 'auto',
+    tier: mobile ? 'low' : 'medium',
+    scale: 1,
+    fps: 60,
+    onChange: null,
+    setMode(mode) {
+      this.mode = mode;
+      if (mode !== 'auto') this.tier = mode;
+      this.scale = TIERS[this.tier].scale;
+      this.apply();
+    },
+    apply() {
+      const t = TIERS[this.tier];
+      const dpr = Math.min(window.devicePixelRatio || 1, t.dpr) * this.scale;
+      renderer.setPixelRatio(dpr);
       renderer.setSize(window.innerWidth, window.innerHeight, false);
-      const s = renderer.getDrawingBufferSize(new THREE.Vector2());
+      const s = renderer.getDrawingBufferSize(v2);
       composer.setSize(s.x, s.y);
-      nd.setSize(s.x, s.y);
+      const nw = Math.max(1, Math.round(s.x * t.inkRes)), nh = Math.max(1, Math.round(s.y * t.inkRes));
+      nd.setSize(nw, nh);
+      bloomSetSize(Math.round(s.x / (t.bloomDiv / 2)), Math.round(s.y / (t.bloomDiv / 2)));
+      bloom.setSize = (w, h) => bloomSetSize(Math.round(w / (t.bloomDiv / 2)), Math.round(h / (t.bloomDiv / 2)));
       ink.uniforms.uRes.value.set(s.x, s.y);
-      ink.uniforms.uThickness.value = Math.max(1, s.y / 900);
+      ink.uniforms.uNRes.value.set(nw, nh);
+      ink.uniforms.uThickness.value = Math.max(1, (nh / 900) * (t.inkRes < 1 ? 1.4 : 1));
+      nd.enabled = t.ink;
+      ink.uniforms.uStrength.value = t.ink ? 0.85 : 0;
+      bloom.enabled = t.bloom;
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
+      this.onChange?.(this.tier, t);
+    },
+    resize() { this.apply(); },
+    // frame-time driven adaptation
+    acc: 0, frames: 0, slow: 0, fast: 0,
+    measure(dt) {
+      this.acc += dt; this.frames++;
+      if (this.acc < 1) return;
+      this.fps = this.frames / this.acc;
+      this.acc = 0; this.frames = 0;
+      if (this.mode !== 'auto') return;
+      if (this.fps < 40) { this.slow++; this.fast = 0; } else if (this.fps > 57) { this.fast++; this.slow = 0; } else { this.slow = 0; this.fast = 0; }
+      if (this.slow >= 2) {
+        this.slow = 0;
+        const i = ORDER.indexOf(this.tier);
+        if (this.scale > 0.6) this.scale = Math.max(0.55, this.scale - 0.15);
+        else if (i > 0) { this.tier = ORDER[i - 1]; this.scale = TIERS[this.tier].scale; }
+        else return;
+        this.apply();
+      } else if (this.fast >= 6) {
+        this.fast = 0;
+        const i = ORDER.indexOf(this.tier);
+        if (this.scale < TIERS[this.tier].scale) this.scale = Math.min(TIERS[this.tier].scale, this.scale + 0.15);
+        else if (i < ORDER.length - 1) { this.tier = ORDER[i + 1]; this.scale = 0.85; }
+        else return;
+        this.apply();
+      }
     },
     render(dt) {
       ink.uniforms.uTime.value = (ink.uniforms.uTime.value + dt) % 100;
-      composer.render(dt);
+      if (!TIERS[this.tier].ink && !TIERS[this.tier].bloom) renderer.render(scene, camera);
+      else composer.render(dt);
     },
   };
+  api.apply();
   return api;
 }

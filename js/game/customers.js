@@ -9,7 +9,7 @@ import { damp, rng } from './tween.js';
 import {
   REGULARS, GENERIC_MODELS, GENERIC_NAMES, GENERIC_WANTS, WEATHERS, SHIFT_SECONDS, LAST_ARRIVAL_HOUR,
 } from './config.js';
-import { keyMatches, buyChance, priceFor, marketPrice, productCategory, levelFor, addWish, clockHour, wishLabel, productName } from './state.js';
+import { keyMatches, buyChance, priceFor, marketPrice, productCategory, levelFor, addWish, clockHour, wishLabel, productName, coziness, cozyBonus, seasonFor } from './state.js';
 import { LAYER_NO_INK } from './render.js';
 
 const SPEED = 1.15;
@@ -171,8 +171,12 @@ export class Customers {
   planNight(s) {
     const lv = levelFor(s.xp);
     const weatherBoost = s.weather === 'clear' ? 1 : 0.9;
-    const total = Math.min(30, Math.round((8 + lv * 3 + Math.min(8, s.night * 1.5)) * weatherBoost));
-    const regs = Object.entries(REGULARS).filter(([, r]) => r.from <= s.night).map(([id]) => id).filter(() => this.r() < 0.8);
+    const festival = s.festival === 'tonight';
+    const cozy = Math.floor(coziness(s) / 8);
+    const base = (8 + lv * 3 + Math.min(8, s.night * 1.5) + cozy) * weatherBoost * (festival ? 1.5 : 1);
+    const total = Math.min(festival ? 40 : 32, Math.round(base));
+    // on festival night every regular comes by
+    const regs = Object.entries(REGULARS).filter(([, r]) => festival || r.from <= s.night).map(([id]) => id).filter(() => festival || this.r() < 0.8);
     const arrivals = [];
     const last = ((LAST_ARRIVAL_HOUR + 24 - 18) / 12) * SHIFT_SECONDS;
     for (let i = 0; i < total; i++) arrivals.push({ at: 12 + this.r() * (last - 12), regular: null });
@@ -207,7 +211,8 @@ export class Customers {
       do { name = GENERIC_NAMES[Math.floor(this.r() * GENERIC_NAMES.length)]; } while (this.usedNames.has(name) && this.usedNames.size < GENERIC_NAMES.length);
       this.usedNames.add(name);
       const weather = WEATHERS[s.weather]?.demand || {};
-      const pool = GENERIC_WANTS.flatMap((w) => Array(Math.round((weather[w.split(':')[0]] || 1) * 2)).fill(w));
+      const season = seasonFor(s.night).demand || {};
+      const pool = GENERIC_WANTS.flatMap((w) => { const k = w.split(':')[0]; return Array(Math.round((weather[k] || 1) * (season[k] || 1) * 2)).fill(w); });
       const n = 1 + Math.floor(this.r() * 2.3);
       const wants = [];
       for (let i = 0; i < n; i++) wants.push(pool[Math.floor(this.r() * pool.length)]);
@@ -277,7 +282,8 @@ export class Customers {
     const price = priceFor(s, d.key);
     const market = marketPrice(d.key);
     const weatherMul = WEATHERS[s.weather]?.demand?.[productCategory(d.key)] || 1;
-    const bonus = (c.info.regular ? 0.05 + (s.rep[c.info.regular] || 0) / 1000 : 0) + (weatherMul - 1) * 0.2;
+    const seasonMul = seasonFor(s.night).demand?.[productCategory(d.key)] || 1;
+    const bonus = (c.info.regular ? 0.05 + (s.rep[c.info.regular] || 0) / 1000 : 0) + (weatherMul - 1) * 0.2 + (seasonMul - 1) * 0.15 + cozyBonus(s);
     if (this.r() <= buyChance(price, market, bonus)) {
       c.play('pick-up', { once: true, fade: 0.15 });
       audio.play(d.key.startsWith('lamp') || d.key.includes('jar') ? 'place_glass' : 'place_wood', { pos: c.pos, volume: 0.5 });

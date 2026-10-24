@@ -3,9 +3,10 @@
 
 import * as THREE from 'three';
 import { audio } from './audio.js';
-import { candle, lamp, productMesh } from './products.js';
-import { CANDLE_FORMS, CANDLE_COLORS, LAMP_BASES, LAMP_SHADES, LAMP_FILTERS } from './config.js';
-import { candleKey, lampKey, hasLicence, productName } from './state.js';
+import { candle, lamp, lens, glassPanel, productMesh } from './products.js';
+import { CANDLE_FORMS, CANDLE_COLORS, LAMP_BASES, LAMP_SHADES, LAMP_FILTERS, LENS_FORMS, GLASS_PATTERNS, GLASS_COLORS } from './config.js';
+import { candleKey, lampKey, lensKey, glassKey, hasLicence, productName } from './state.js';
+import { ico } from './ui.js';
 import { tween, ease, popIn, clamp } from './tween.js';
 
 const $ = (id) => document.getElementById(id);
@@ -31,9 +32,11 @@ export class Crafting {
   open(id) {
     const s = this.getState();
     const st = this.world.shop.stations[id];
-    if (id === 'lamp' && !hasLicence(s, 'lamps')) { this.ui.toast('The lamp bench needs a Lamp Workbench licence — see the ledger.', '📜'); return false; }
+    const need = { lamp: 'lamps', lens: 'lens', glass: 'glass' }[id];
+    if (need && !hasLicence(s, need)) { this.ui.toast(`This bench needs the <b>${{ lamps: 'Lamp Workbench', lens: 'Lens Grinding', glass: 'Stained Glass' }[need]}</b> licence — see the ledger.`, 'i-ledger'); return false; }
     if ((s.supplies[id] || 0) <= 0) {
-      this.ui.toast(id === 'candle' ? 'Out of wax! Carry a box of Candle Supplies to the bench.' : 'Out of parts! Carry a Lamp Parts Kit to the bench.', '📦');
+      const what = { candle: 'Candle Supplies', lamp: 'a Lamp Parts Kit', lens: 'Glass Blanks', glass: 'Coloured Glass' }[id];
+      this.ui.toast(`Out of materials — carry <b>${what}</b> to this bench.`, 'i-box');
       return false;
     }
     this.active = { id, st, step: 0, choice: {}, scores: [] };
@@ -41,14 +44,23 @@ export class Crafting {
     this.input.exitLock();
     this.el.root.hidden = false;
     this.ui.setHud(false);
-    this.ui.setStationTitle(id === 'candle' ? 'Candle Bench' : 'Lamp Bench');
-    if (id === 'candle') this.candleStep0(); else this.lampStep0();
+    this.ui.setStationTitle({ candle: 'Candle Bench', lamp: 'Lamp Bench', lens: 'Lens Grinder', glass: 'Glass Table' }[id]);
+    this.restart();
     audio.play('cloth', { volume: 0.4 });
     return true;
   }
 
+  restart() {
+    const id = this.active.id;
+    if (id === 'candle') this.candleStep0();
+    else if (id === 'lamp') this.lampStep0();
+    else if (id === 'lens') this.lensStep0();
+    else this.glassStep0();
+  }
+
   close() {
     if (!this.active) return;
+    this.stopDial?.();
     this.clearPreview();
     this.stopHold();
     if (this.active.st.flame) this.active.st.flame.scale.setScalar(1);
@@ -67,7 +79,8 @@ export class Crafting {
       const b = document.createElement('button');
       b.className = 'opt';
       b.disabled = !!o.locked;
-      b.innerHTML = `${o.color ? `<span class="dot" style="background:${o.color}"></span>` : o.icon ? `<span style="font-size:24px">${o.icon}</span>` : ''}<span>${o.label}</span>${o.sub ? `<small>${o.sub}</small>` : ''}`;
+      const icon = o.icon ? (o.icon.startsWith('i-') ? ico(o.icon) : `<span style="font-size:26px;line-height:30px">${o.icon}</span>`) : '';
+      b.innerHTML = `${o.color ? `<span class="dot" style="background:${o.color}"></span>` : icon}<span>${o.label}</span>${o.sub ? `<small>${o.sub}</small>` : ''}`;
       if (o.locked) b.style.opacity = '.45';
       b.addEventListener('click', () => { audio.play('key_click', { volume: 0.5 }); onPick(o.value); });
       this.el.ui.appendChild(b);
@@ -150,7 +163,7 @@ export class Crafting {
   candleStep0() {
     const s = this.getState();
     this.setStep(`Choose a mould · ${s.supplies.candle} uses of wax left`);
-    this.options(Object.entries(CANDLE_FORMS).map(([id, f]) => ({ value: id, label: f.name, sub: `sells ~${f.market.toFixed(0)}`, icon: id === 'jar' ? '🫙' : id === 'taper' ? '🕯️' : '🧱', locked: !hasLicence(s, f.licence) })), (form) => {
+    this.options(Object.entries(CANDLE_FORMS).map(([id, f]) => ({ value: id, label: f.name, sub: `sells ~${f.market.toFixed(0)}`, icon: 'i-candle', locked: !hasLicence(s, f.licence) })), (form) => {
       this.active.choice.form = form;
       this.clearPreview();
       const st = this.active.st;
@@ -348,6 +361,218 @@ export class Crafting {
     });
   }
 
+  // ---------------- Lens grinder ----------------
+  lensStep0() {
+    const s = this.getState();
+    this.setStep(`Choose what to grind · ${s.supplies.lens} blanks left`);
+    this.options(Object.entries(LENS_FORMS).map(([id, f]) => ({ value: id, label: f.name, sub: `sells ~${f.market}`, icon: 'i-lens', locked: !hasLicence(s, f.licence) })), (form) => {
+      this.active.choice.form = form;
+      this.lensStep1();
+    });
+  }
+
+  lensStep1() {
+    this.setStep('Mount the glass blank on the wheel');
+    this.options([{ value: 1, label: 'Mount blank', icon: 'i-lens' }], () => {
+      const st = this.active.st;
+      this.clearPreview();
+      const blank = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.012, 28), new THREE.MeshToonMaterial({ color: '#b9cfd2', transparent: true, opacity: 0.75 }));
+      blank.rotation.z = Math.PI / 2;
+      const g = new THREE.Group();
+      g.add(blank);
+      g.position.set(st.center.x - 0.2, 1.16, st.center.z + 0.0);
+      g.scale.setScalar(1.4);
+      this.world.scene.add(g);
+      this.preview = g;
+      popIn(g, { from: 0.4 });
+      audio.play('place_glass', { volume: 0.6 });
+      this.lensStep2();
+    });
+  }
+
+  lensStep2() {
+    this.setStep('Draw slow circles on the ring to polish the lens');
+    this.el.ui.innerHTML = '';
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:grid;gap:12px;justify-items:center';
+    wrap.innerHTML = '<div class="dial-pad"><i></i></div><div class="meter"><i></i></div>';
+    this.el.ui.appendChild(wrap);
+    const pad = wrap.querySelector('.dial-pad');
+    const knob = pad.querySelector('i');
+    const bar = wrap.querySelector('.meter i');
+    const need = Math.PI * 2 * 4;      // four full turns
+    const d = { angle: null, total: 0, off: 0, samples: 0, down: false, lastRub: 0 };
+    const move = (e) => {
+      if (!d.down) return;
+      const r = pad.getBoundingClientRect();
+      const x = e.clientX - (r.left + r.width / 2), y = e.clientY - (r.top + r.height / 2);
+      const rad = Math.hypot(x, y) / (r.width / 2);
+      const a = Math.atan2(y, x);
+      knob.style.left = `${50 + Math.cos(a) * 33.5}%`;
+      knob.style.top = `${50 + Math.sin(a) * 33.5}%`;
+      if (d.angle !== null) {
+        let da = a - d.angle;
+        while (da > Math.PI) da -= Math.PI * 2;
+        while (da < -Math.PI) da += Math.PI * 2;
+        d.total += Math.abs(da);
+        this.lensSpin = Math.abs(da) * 60;
+        if (d.total - d.lastRub > 1.2) { audio.play('cloth', { volume: 0.25, rate: 1.4 }); d.lastRub = d.total; }
+      }
+      d.angle = a;
+      d.off += Math.abs(rad - 0.67);
+      d.samples++;
+      bar.style.width = `${Math.min(100, (d.total / need) * 100)}%`;
+      const k = Math.min(1, d.total / need);
+      if (this.preview) this.preview.children[0].material.opacity = 0.75 - k * 0.45;
+      if (d.total >= need) finish();
+    };
+    const finish = () => {
+      if (d.done) return;
+      d.done = true;
+      this.stopDial();
+      const wobble = d.off / Math.max(1, d.samples);
+      this.active.scores.push(wobble < 0.12 ? 3 : wobble < 0.25 ? 2 : 1);
+      audio.play('clink', { volume: 0.5 });
+      setTimeout(() => this.lensStep3(), 300);
+    };
+    const down = (e) => { d.down = true; d.angle = null; pad.setPointerCapture?.(e.pointerId); move(e); };
+    const up = () => { d.down = false; d.angle = null; };
+    pad.addEventListener('pointerdown', down);
+    pad.addEventListener('pointermove', move);
+    addEventListener('pointerup', up);
+    this.stopDial = () => { removeEventListener('pointerup', up); this.stopDial = null; this.lensSpin = 0; };
+  }
+
+  lensStep3() {
+    this.setStep('Hold it up to the light');
+    this.options([{ value: 1, label: 'Inspect', icon: 'i-sparkle' }], () => {
+      const st = this.active.st;
+      const form = this.active.choice.form;
+      this.clearPreview();
+      const l = lens(form, { polish: 1 });
+      const g = new THREE.Group();
+      g.add(l);
+      g.position.set(st.center.x, 0.98, st.center.z + 0.05);
+      g.scale.setScalar(2.2);
+      this.world.scene.add(g);
+      this.preview = g;
+      tween({ duration: 0.8, easing: ease.outBack, update: (k) => { g.position.y = 0.98 + k * 0.25; g.rotation.y = k * Math.PI * 0.4; } });
+      audio.play('clink', { volume: 0.5, rate: 1.3 });
+      this.el.ui.innerHTML = '';
+      setTimeout(() => {
+        if (!this.active) return;
+        const stars = clamp(Math.round(this.active.scores.reduce((a, b) => a + b, 0) / this.active.scores.length), 1, 3);
+        this.complete(lensKey(form, stars), stars);
+      }, 900);
+    });
+  }
+
+  // ---------------- Stained glass table ----------------
+  glassStep0() {
+    const s = this.getState();
+    this.setStep(`Choose a pattern · ${s.supplies.glass} sheets left`);
+    this.options(Object.entries(GLASS_PATTERNS).map(([id, p]) => ({ value: id, label: p.name, icon: 'i-glass' })), (pattern) => {
+      this.active.choice.pattern = pattern;
+      this.glassStep1('c1');
+    });
+  }
+
+  glassStep1(which) {
+    this.setStep(which === 'c1' ? 'Pick the colour for the picture' : 'Pick the colour for the background');
+    this.options(Object.entries(GLASS_COLORS).filter(([id]) => id !== this.active.choice.c1).map(([id, c]) => ({ value: id, label: c.name, color: c.hex })), (c) => {
+      this.active.choice[which] = c;
+      audio.play('clink', { volume: 0.4 });
+      if (which === 'c1') this.glassStep1('c2'); else this.glassStep2();
+    });
+  }
+
+  glassStep2() {
+    const { pattern, c1, c2 } = this.active.choice;
+    const st = this.active.st;
+    this.clearPreview();
+    const filled = new Set();
+    const g = new THREE.Group();
+    const panel = glassPanel(pattern, c1, c2, { filled });
+    panel.rotation.x = -Math.PI / 2 + 0.25;
+    panel.position.set(0, 0.02, 0.12);
+    g.add(panel);
+    g.position.set(st.center.x, 0.95, st.center.z + 0.05);
+    g.scale.setScalar(2.2);
+    this.world.scene.add(g);
+    this.preview = g;
+    this.setStep('Lay each piece of glass — follow the glowing square (drag to go faster)');
+    const P = GLASS_PATTERNS[pattern];
+    this.el.ui.innerHTML = '';
+    const grid = document.createElement('div');
+    grid.className = 'grid-pick';
+    grid.style.gridTemplateColumns = 'repeat(5, 44px)';
+    const order = [];
+    for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) order.push(r * 5 + c);
+    let next = 0, misses = 0, painting = false;
+    const buttons = order.map((i) => {
+      const b = document.createElement('button');
+      b.dataset.i = i;
+      grid.appendChild(b);
+      return b;
+    });
+    const mark = () => buttons.forEach((b, i) => b.classList.toggle('want', i === order[next] && !filled.has(i)));
+    const fill = (i) => {
+      if (filled.has(i)) return;
+      if (i !== order[next]) misses++;
+      filled.add(i);
+      const r = Math.floor(i / 5), c = i % 5;
+      const hex = (P.grid[r][c] === '1' ? GLASS_COLORS[c1] : GLASS_COLORS[c2]).hex;
+      buttons[i].style.background = hex;
+      buttons[i].classList.add('filled');
+      for (const cell of panel.userData.cells) if (cell.userData.cell === i) { cell.visible = true; cell.userData.back.visible = true; popIn(cell, { from: 0.3, duration: 0.25 }); }
+      audio.play('place_glass', { volume: 0.35, rate: 1 + (filled.size % 5) * 0.04 });
+      while (next < order.length && filled.has(order[next])) next++;
+      mark();
+      if (filled.size === 25) {
+        this.active.scores.push(misses <= 2 ? 3 : misses <= 6 ? 2 : 1);
+        setTimeout(() => this.glassStep3(), 350);
+      }
+    };
+    grid.addEventListener('pointerdown', (e) => { painting = true; const i = e.target.dataset.i; if (i !== undefined) fill(+i); e.preventDefault(); });
+    grid.addEventListener('pointerover', (e) => { if (painting && e.target.dataset.i !== undefined) fill(+e.target.dataset.i); });
+    addEventListener('pointerup', () => { painting = false; }, { once: false });
+    this.el.ui.appendChild(grid);
+    mark();
+  }
+
+  glassStep3() {
+    this.setStep('Hold to solder the lead came — let go in the green');
+    this.holdMeter({
+      label: 'Hold to solder',
+      rate: 0.4,
+      onTick: (ev) => { if (ev === 'start') audio.loop('fire_loop', { volume: 0.4, pos: this.active.st.center, rate: 1.4 }); else audio.stopLoop('fire_loop', 0.3); },
+      onDone: (score) => {
+        this.stopHold();
+        audio.loop('fire_loop', { volume: 0.08, pos: this.world.shop.stations.candle.pot });
+        this.active.scores.push(score);
+        this.glassStep4();
+      },
+    });
+  }
+
+  glassStep4() {
+    this.setStep('Lift it up to the window light!');
+    this.options([{ value: 1, label: 'Lift it up', icon: 'i-sparkle' }], () => {
+      const g = this.preview;
+      const panel = g.children[0];
+      const from = panel.rotation.x;
+      tween({ duration: 0.9, easing: ease.outBack, update: (k) => { panel.rotation.x = from + (0 - from) * k; g.position.y = 0.95 + k * 0.12; } });
+      audio.play('clink', { volume: 0.5, rate: 1.2 });
+      this.el.ui.innerHTML = '';
+      setTimeout(() => {
+        if (!this.active) return;
+        const { pattern, c1, c2 } = this.active.choice;
+        const stars = clamp(Math.round(this.active.scores.reduce((a, b) => a + b, 0) / this.active.scores.length), 1, 3);
+        this.complete(glassKey(pattern, c1, c2, stars), stars);
+      }, 1000);
+    });
+  }
+
   // ---------------- shared ----------------
   complete(key, stars) {
     const s = this.getState();
@@ -363,12 +588,12 @@ export class Crafting {
     this.el.ui.innerHTML = `<div class="opt" style="pointer-events:none"><span class="stars">${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}</span><small>${stars === 3 ? 'Beautiful work' : stars === 2 ? 'Lovely' : 'Charming'}</small></div>`;
     const again = document.createElement('button');
     again.className = 'opt';
-    again.innerHTML = '<span style="font-size:22px">↻</span><span>Make another</span>';
+    again.innerHTML = `${ico('i-sparkle')}<span>Make another</span><small>${s.supplies[id] || 0} left</small>`;
     again.disabled = (s.supplies[id] || 0) <= 0;
-    again.addEventListener('click', () => { this.clearPreview(); this.active.scores = []; this.active.choice = {}; id === 'candle' ? this.candleStep0() : this.lampStep0(); });
+    again.addEventListener('click', () => { this.clearPreview(); this.active.scores = []; this.active.choice = {}; this.restart(); });
     const done = document.createElement('button');
     done.className = 'opt';
-    done.innerHTML = '<span style="font-size:22px">✓</span><span>Done</span>';
+    done.innerHTML = `${ico('i-check')}<span>Done</span>`;
     done.addEventListener('click', () => this.close());
     this.el.ui.append(again, done);
     // fly the preview into the crate
@@ -413,6 +638,8 @@ export class Crafting {
   }
 
   update(dt) {
+    const wheel = this.world.shop.stations.lens?.wheel;
+    if (wheel) { this.wheelSpin = ((this.wheelSpin || 0) * Math.exp(-3 * dt)) + (this.lensSpin || 0) * dt; wheel.rotation.x += this.wheelSpin * dt * 4; if (this.preview && this.active?.id === 'lens') this.preview.rotation.x += this.wheelSpin * dt * 4; this.lensSpin = 0; }
     if (this.hold && !this.hold.done) {
       if (this.hold.down) this.hold.v = Math.min(1, this.hold.v + this.hold.rate * dt);
       this.hold.bar.style.width = `${this.hold.v * 100}%`;

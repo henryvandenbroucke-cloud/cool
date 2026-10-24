@@ -4,9 +4,11 @@ import {
   STOCK, SUPPLIES, CANDLE_FORMS, CANDLE_COLORS, LAMP_BASES, LAMP_SHADES, LAMP_FILTERS,
   LAMP_BASE_MARKET, LAMP_UNIT_COST, LICENCES, LEVELS, START_COINS, REGULARS, HOUSES,
   REP_WINDOW_STEPS, GENERIC_SALES_PER_WINDOW, SIZE_PER_SECTION, LETTERS, MILESTONE_LETTERS,
+  LENS_FORMS, GLASS_PATTERNS, GLASS_COLORS, GLASS_BASE_MARKET, GLASS_UNIT_COST, EXPANSIONS, DECOR, STAFF,
+  SEASONS, NIGHTS_PER_SEASON,
 } from './config.js';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 const SAVE_KEY = (slot) => `lantern-lens:save:${slot}`;
 
 // ---------- Product keys ----------
@@ -14,17 +16,23 @@ const SAVE_KEY = (slot) => `lantern-lens:save:${slot}`;
 // supply:     "supply:candle_supplies"
 // candle:     "candle:<form>:<color>:<stars>"
 // lamp:       "lamp:<base>:<shade>:<filter>:<stars>"
+// lens:       "lens:<form>:<stars>"
+// glass:      "glass:<pattern>:<motif colour>:<background colour>:<stars>"
 
 export function parseKey(key) {
   const parts = key.split(':');
   if (parts[0] === 'candle') return { kind: 'candle', form: parts[1], color: parts[2], stars: +parts[3] || 1 };
   if (parts[0] === 'lamp') return { kind: 'lamp', base: parts[1], shade: parts[2], filter: parts[3], stars: +parts[4] || 1 };
+  if (parts[0] === 'lens') return { kind: 'lens', form: parts[1], stars: +parts[2] || 1 };
+  if (parts[0] === 'glass') return { kind: 'glass', pattern: parts[1], c1: parts[2], c2: parts[3], stars: +parts[4] || 1 };
   if (parts[0] === 'supply') return { kind: 'supply', id: parts[1] };
   return { kind: 'stock', id: parts[0] };
 }
 
 export function candleKey(form, color, stars) { return `candle:${form}:${color}:${stars}`; }
 export function lampKey(base, shade, filter, stars) { return `lamp:${base}:${shade}:${filter}:${stars}`; }
+export function lensKey(form, stars) { return `lens:${form}:${stars}`; }
+export function glassKey(pattern, c1, c2, stars) { return `glass:${pattern}:${c1}:${c2}:${stars}`; }
 
 const starMul = (stars) => 1 + 0.12 * (Math.max(1, Math.min(3, stars)) - 1);
 const round2 = (v) => Math.round(v * 100) / 100;
@@ -37,6 +45,8 @@ export function marketPrice(key) {
     const base = LAMP_BASE_MARKET + (LAMP_BASES[p.base]?.market ?? 0) + (LAMP_SHADES[p.shade]?.market ?? 0);
     return round2(base * starMul(p.stars));
   }
+  if (p.kind === 'lens') return round2((LENS_FORMS[p.form]?.market ?? 12) * starMul(p.stars));
+  if (p.kind === 'glass') return round2((GLASS_BASE_MARKET + (GLASS_PATTERNS[p.pattern]?.market ?? 0)) * starMul(p.stars));
   return 0;
 }
 
@@ -45,6 +55,8 @@ export function unitCost(key) {
   if (p.kind === 'stock') return STOCK[p.id]?.cost ?? 0;
   if (p.kind === 'candle') return CANDLE_FORMS[p.form]?.unitCost ?? 0.8;
   if (p.kind === 'lamp') return LAMP_UNIT_COST;
+  if (p.kind === 'lens') return LENS_FORMS[p.form]?.unitCost ?? 2;
+  if (p.kind === 'glass') return GLASS_UNIT_COST;
   if (p.kind === 'supply') return SUPPLIES[p.id]?.cost ?? 0;
   return 0;
 }
@@ -55,18 +67,21 @@ export function productName(key) {
   if (p.kind === 'supply') return SUPPLIES[p.id]?.name ?? key;
   if (p.kind === 'candle') return `${CANDLE_COLORS[p.color]?.name ?? ''} ${CANDLE_FORMS[p.form]?.name ?? 'Candle'}`.trim();
   if (p.kind === 'lamp') return `${LAMP_FILTERS[p.filter]?.name ?? ''} ${LAMP_SHADES[p.shade]?.name ?? ''} Lamp`.replace(/\s+/g, ' ').trim();
+  if (p.kind === 'lens') return LENS_FORMS[p.form]?.name ?? 'Lens';
+  if (p.kind === 'glass') return `${GLASS_COLORS[p.c1]?.name ?? ''} ${GLASS_PATTERNS[p.pattern]?.name ?? 'Glass'} Panel`.trim();
   return key;
 }
 
 export function productStars(key) {
   const p = parseKey(key);
-  return p.kind === 'candle' || p.kind === 'lamp' ? p.stars : 0;
+  return ['candle', 'lamp', 'lens', 'glass'].includes(p.kind) ? p.stars : 0;
 }
 
 export function productSize(key) {
   const p = parseKey(key);
   if (p.kind === 'stock') return STOCK[p.id]?.size ?? 's';
   if (p.kind === 'lamp') return 'l';
+  if (p.kind === 'glass') return 'm';
   return 's';
 }
 
@@ -90,6 +105,16 @@ export function keyMatches(key, pattern) {
 }
 
 /** How likely a shopper accepts a price. Gentle curve; never a hard fail state. */
+// ---------- Seasons ----------
+export function seasonIndex(night) { return Math.floor((Math.max(1, night) - 1) / NIGHTS_PER_SEASON) % SEASONS.length; }
+export function seasonFor(night) { return SEASONS[seasonIndex(night)]; }
+
+/** How inviting the shop is: placed decor adds up. */
+export function coziness(s) {
+  return (s.decor || []).reduce((a, d) => a + (DECOR[d.type]?.cozy || 0), 0);
+}
+export function cozyBonus(s) { return Math.min(0.08, coziness(s) * 0.004); }
+
 export function buyChance(price, market, bonus = 0) {
   const r = price / Math.max(0.01, market);
   let c;
@@ -147,7 +172,7 @@ export function newGame(slot = 0, seed = Date.now()) {
       { id: 'b1', key: 'matches', count: 12, at: 'porch' },
       { id: 'b2', key: 'supply:candle_supplies', count: 1, at: 'porch' },
     ],
-    supplies: { candle: 0, lamp: 0 },
+    supplies: { candle: 0, lamp: 0, lens: 0, glass: 0 },
     crafted: [],            // finished crafts waiting in the crate: [key,...]
     rep,
     met: [],
@@ -160,6 +185,13 @@ export function newGame(slot = 0, seed = Date.now()) {
     tutorial: 0,
     nextBoxId: 3,
     cat: { pets: 0 },
+    expansions: [],
+    decor: [],              // { id, type, x, z, rot }
+    decorStore: [],         // bought but not placed: [type]
+    nextDecorId: 1,
+    staff: [],              // hired staff ids
+    festival: 'none',       // 'none' | 'ready' | 'tonight' | 'done'
+    tutorialDone: false,
   };
 }
 
@@ -173,8 +205,55 @@ export function canBuyLicence(s, id) {
   const L = LICENCES[id];
   if (!L || L.soon) return false;
   if (s.licences.includes(id)) return false;
+  if (L.requires && !s.expansions.includes(L.requires)) return false;
   return levelFor(s.xp) >= L.level && s.coins >= L.price;
 }
+
+// ---------- Expansions, decor, staff ----------
+export function canBuyExpansion(s, id) {
+  const E = EXPANSIONS[id];
+  return !!E && !s.expansions.includes(id) && levelFor(s.xp) >= E.level && s.coins >= E.price;
+}
+export function buyExpansion(s, id) {
+  if (!canBuyExpansion(s, id)) return false;
+  s.coins = round2(s.coins - EXPANSIONS[id].price);
+  s.expansions.push(id);
+  return true;
+}
+
+export function canBuyDecor(s, type) {
+  const D = DECOR[type];
+  return !!D && levelFor(s.xp) >= D.level && s.coins >= D.price;
+}
+export function buyDecor(s, type) {
+  if (!canBuyDecor(s, type)) return false;
+  s.coins = round2(s.coins - DECOR[type].price);
+  s.decorStore.push(type);
+  return true;
+}
+export function placeDecor(s, type, x, z, rot) {
+  const i = s.decorStore.indexOf(type);
+  if (i < 0) return null;
+  s.decorStore.splice(i, 1);
+  const d = { id: 'd' + s.nextDecorId++, type, x: round2(x), z: round2(z), rot: round2(rot) };
+  s.decor.push(d);
+  return d;
+}
+export function storeDecor(s, id) {
+  const d = s.decor.find((x) => x.id === id);
+  if (!d) return null;
+  s.decor = s.decor.filter((x) => x !== d);
+  s.decorStore.push(d.type);
+  return d;
+}
+
+export function canHire(s, id) {
+  const S = STAFF[id];
+  return !!S && !s.staff.includes(id) && levelFor(s.xp) >= S.level;
+}
+export function hire(s, id) { if (!canHire(s, id)) return false; s.staff.push(id); return true; }
+export function dismiss(s, id) { s.staff = s.staff.filter((x) => x !== id); }
+export function wages(s) { return s.staff.reduce((a, id) => a + (STAFF[id]?.wage || 0), 0); }
 
 export function buyLicence(s, id) {
   if (!canBuyLicence(s, id)) return false;
@@ -249,6 +328,14 @@ export function recordSale(s, { key, price, regular = null }) {
     const letter = { id: 'm:tenWindows', from: L.from, text: L.text, read: false };
     s.letters.push(letter);
     effects.letters.push(letter);
+  }
+  if (s.lit.length >= totalWindows() && s.festival === 'none') {
+    s.festival = 'ready';
+    const L = MILESTONE_LETTERS.allWindows;
+    const letter = { id: 'm:allWindows', from: L.from, text: L.text, read: false };
+    s.letters.push(letter);
+    effects.letters.push(letter);
+    effects.festival = true;
   }
   effects.levelUp = levelFor(s.xp) > lvBefore;
   return effects;
@@ -335,13 +422,27 @@ export function startShift(s, rng = Math.random) {
   s.clock = 0;
   s.tonight = freshTonight();
   const roll = rng();
-  s.weather = s.night === 1 ? 'clear' : roll < 0.5 ? 'clear' : roll < 0.78 ? 'rain' : 'fog';
+  const season = seasonFor(s.night).id;
+  const wet = season === 'winter' ? 'snow' : 'rain';
+  s.weather = s.night === 1 ? 'clear' : roll < 0.5 ? 'clear' : roll < 0.78 ? wet : 'fog';
+  if (s.festival === 'ready') { s.festival = 'tonight'; s.weather = 'clear'; }
 }
 
 export function endShift(s) {
   const summary = { night: s.night, weather: s.weather, ...s.tonight };
+  const pay = wages(s);
+  summary.wages = pay;
+  s.coins = round2(Math.max(0, s.coins - pay));
+  const seasonBefore = seasonIndex(s.night);
+  if (s.festival === 'tonight') {
+    s.festival = 'done';
+    summary.festival = true;
+    const L = MILESTONE_LETTERS.festival;
+    if (!s.letters.find((l) => l.id === 'm:festival')) s.letters.push({ id: 'm:festival', from: L.from, text: L.text, read: false });
+  }
   s.stats.nights++;
   s.night++;
+  if (seasonIndex(s.night) !== seasonBefore) summary.newSeason = seasonFor(s.night);
   s.phase = 'prep';
   s.clock = 0;
   if (s.night === 2 && !s.letters.find((l) => l.id === 'm:firstNight')) {
@@ -407,7 +508,12 @@ export function migrate(s) {
   out.supplies = { ...base.supplies, ...(s.supplies || {}) };
   out.tonight = { ...freshTonight(), ...(s.tonight || {}) };
   out.cat = { ...base.cat, ...(s.cat || {}) };
-  out.boxes = (out.boxes || []).map((b) => (b.at === 'held' ? { ...b, at: 'porch' } : b));
+  for (const k of ['expansions', 'decor', 'decorStore', 'staff']) out[k] = Array.isArray(s[k]) ? s[k] : [];
+  out.nextDecorId = s.nextDecorId || out.decor.length + 1;
+  out.festival = s.festival || 'none';
+  out.tutorialDone = !!s.tutorialDone || (s.tutorial ?? 0) >= 5;
+  out.boxes = (out.boxes || []).map(({ claimed, ...b }) => (b.at === 'held' || b.at === 'staff' ? { ...b, at: 'porch' } : b));
+  out.supplies = { candle: 0, lamp: 0, lens: 0, glass: 0, ...out.supplies };
   // A save made mid-shift resumes at the start of that night's prep.
   if (out.phase === 'shift') { out.phase = 'prep'; out.clock = 0; }
   out.version = SAVE_VERSION;

@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { toon, glow, textures, LAYER_NO_INK } from './render.js';
 import { parseKey } from './state.js';
-import { CANDLE_COLORS, LAMP_BASES, LAMP_FILTERS, STOCK, SUPPLIES } from './config.js';
+import { CANDLE_COLORS, LAMP_BASES, LAMP_FILTERS, STOCK, SUPPLIES, GLASS_PATTERNS, GLASS_COLORS } from './config.js';
 
 const V = (x, y) => new THREE.Vector2(x, y);
 const mats = new Map();
@@ -51,6 +51,7 @@ export function flame(scale = 1) {
   inner.position.y = 0.012 * scale;
   g.add(outer, inner);
   g.userData.seed = Math.random() * 100;
+  g.userData.dynamic = true;
   flames.add(g);
   return g;
 }
@@ -252,12 +253,108 @@ export function stockMesh(id) {
   }
 }
 
+// ---------- Lenses ----------
+export function lens(form, { polish = 1 } = {}) {
+  const g = new THREE.Group();
+  const brass = mat('#c99a3e');
+  if (form === 'spyglass') {
+    const tubes = [[0.022, 0.09, '#c99a3e'], [0.019, 0.08, '#8a5a3b'], [0.016, 0.07, '#c99a3e']];
+    let z = 0;
+    for (const [r, len, c] of tubes) {
+      const t = mesh(new THREE.CylinderGeometry(r, r, len, 18), mat(c));
+      t.rotation.z = Math.PI / 2;
+      t.position.set(z + len / 2 - 0.12, 0.03, 0);
+      g.add(t);
+      z += len;
+    }
+    const eye = mesh(new THREE.CircleGeometry(0.02, 18), glassMat('#cfe9ef', 0.7), true);
+    eye.rotation.y = -Math.PI / 2;
+    eye.position.set(-0.121, 0.03, 0);
+    g.add(eye);
+    const stand = mesh(new THREE.BoxGeometry(0.16, 0.008, 0.05), mat('#6e4a36'));
+    stand.position.y = 0.004;
+    g.add(stand);
+    return g;
+  }
+  // reading lens: brass rim, glass disc and a turned wooden handle, resting on a little stand
+  const rim = mesh(new THREE.TorusGeometry(0.045, 0.006, 8, 28), brass);
+  const disc = mesh(new THREE.CircleGeometry(0.045, 28), glassMat('#d8f0f4', 0.35 + 0.25 * polish), true);
+  disc.material = disc.material.clone();
+  disc.material.side = THREE.DoubleSide;
+  const handle = mesh(new THREE.LatheGeometry([new THREE.Vector2(0, 0), new THREE.Vector2(0.008, 0), new THREE.Vector2(0.01, 0.04), new THREE.Vector2(0.007, 0.07), new THREE.Vector2(0, 0.075)], 10), mat('#8a5a3b'));
+  const head = new THREE.Group();
+  head.add(rim, disc);
+  head.position.y = 0.075 + 0.045;
+  handle.position.y = 0;
+  g.add(handle, head);
+  const glint = mesh(new THREE.PlaneGeometry(0.03, 0.006), glow('#ffffff', 2), true);
+  glint.position.set(-0.015, 0.135, 0.002);
+  glint.rotation.z = 0.6;
+  glint.visible = polish > 0.6;
+  g.add(glint);
+  g.rotation.x = -0.12;
+  return g;
+}
+
+// ---------- Stained glass ----------
+const glassPanelCache = new Map();
+export function glassPanel(pattern, c1, c2, { lit = true, filled = null } = {}) {
+  const P = GLASS_PATTERNS[pattern] || GLASS_PATTERNS.moon;
+  const g = new THREE.Group();
+  const size = 0.26, n = 5, cell = size / n;
+  const frame = mat('#3b2a20');
+  const add = (geo, m, x, y, z = 0) => { const o = mesh(geo, m); o.position.set(x, y, z); g.add(o); return o; };
+  // pieces
+  const glassFor = (hex) => {
+    const k = hex + (lit ? 'L' : 'D');
+    if (!glassPanelCache.has(k)) glassPanelCache.set(k, new THREE.MeshBasicMaterial({ color: new THREE.Color(hex).multiplyScalar(lit ? 1.15 : 0.7), transparent: true, opacity: 0.92 }));
+    return glassPanelCache.get(k);
+  };
+  const pieceGeo = new THREE.PlaneGeometry(cell * 0.94, cell * 0.94);
+  const cells = [];
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) {
+      const isMotif = P.grid[r][c] === '1';
+      const hex = (isMotif ? GLASS_COLORS[c1] : GLASS_COLORS[c2])?.hex ?? '#ffffff';
+      const piece = add(pieceGeo, glassFor(hex), -size / 2 + cell * (c + 0.5), 0.03 + size - cell * (r + 0.5), 0);
+      piece.layers.set(1);
+      piece.userData.cell = r * n + c;
+      piece.userData.hex = hex;
+      if (filled && !filled.has(r * n + c)) piece.visible = false;
+      cells.push(piece);
+      const back = piece.clone();
+      back.rotation.y = Math.PI;
+      back.position.z = -0.001;
+      back.visible = piece.visible;
+      back.userData.pair = piece;
+      piece.userData.back = back;
+      g.add(back);
+    }
+  }
+  // lead came grid
+  for (let i = 0; i <= n; i++) {
+    add(new THREE.BoxGeometry(0.004, size, 0.008), frame, -size / 2 + cell * i, 0.03 + size / 2);
+    add(new THREE.BoxGeometry(size, 0.004, 0.008), frame, 0, 0.03 + cell * i);
+  }
+  // wooden frame + little foot so it stands on a shelf
+  const wood = mat('#8a5a3b');
+  add(new THREE.BoxGeometry(size + 0.03, 0.018, 0.02), wood, 0, 0.03 + size + 0.008);
+  add(new THREE.BoxGeometry(size + 0.03, 0.018, 0.02), wood, 0, 0.022);
+  add(new THREE.BoxGeometry(0.018, size + 0.03, 0.02), wood, -size / 2 - 0.008, 0.03 + size / 2);
+  add(new THREE.BoxGeometry(0.018, size + 0.03, 0.02), wood, size / 2 + 0.008, 0.03 + size / 2);
+  add(new THREE.BoxGeometry(0.2, 0.012, 0.07), mat('#6e4a36'), 0, 0.006);
+  g.userData.cells = cells;
+  return g;
+}
+
 /** Any product key → a mesh, normalised so its origin sits on the base. */
 export function productMesh(key, opts = {}) {
   const p = parseKey(key);
   let m;
   if (p.kind === 'candle') m = candle(p.form, p.color, opts);
   else if (p.kind === 'lamp') m = lamp(p.base, p.shade, p.filter, opts);
+  else if (p.kind === 'lens') m = lens(p.form);
+  else if (p.kind === 'glass') m = glassPanel(p.pattern, p.c1, p.c2);
   else m = stockMesh(p.id);
   m.userData.key = key;
   return m;
@@ -311,6 +408,8 @@ export function setBoxOpen(box, open) {
 export function footprint(key) {
   const p = parseKey(key);
   if (p.kind === 'lamp') return { w: 0.24, d: 0.22 };
+  if (p.kind === 'glass') return { w: 0.3, d: 0.12 };
+  if (p.kind === 'lens' && p.form === 'spyglass') return { w: 0.2, d: 0.1 };
   if (p.kind === 'stock' && p.id === 'lantern') return { w: 0.16, d: 0.16 };
   if (p.kind === 'candle' && p.form === 'taper') return { w: 0.13, d: 0.11 };
   if (p.kind === 'stock' && p.id === 'matches') return { w: 0.09, d: 0.07 };

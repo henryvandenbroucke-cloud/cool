@@ -33,6 +33,7 @@ export class Player {
   }
 
   get inside() { return this.pos.z < 4.05 && this.pos.x > -5 && this.pos.x < 5; }
+  get inStudio() { return this.pos.z < -4.1 && this.pos.x > 1.3 && this.pos.x < 5.1; }
 
   update(dt, input) {
     const look = input.consumeLook();
@@ -120,7 +121,8 @@ export class Player {
     }
     // never leave the yard
     this.pos.x = clamp(this.pos.x, -6.8, 6.8);
-    this.pos.z = clamp(this.pos.z, -3.75, 10.3);
+    const studioColumn = this.pos.x > 1.5 && this.pos.x < 4.9 && this.world.studioOpen;
+    this.pos.z = clamp(this.pos.z, studioColumn ? -7.55 : -3.75, 10.3);
   }
 
   focus(view) { this.override = view; }

@@ -20,40 +20,113 @@
   </script>
 </head>
 <body>
+  <!-- Hand-drawn icon set: <svg class="ico"><use href="#i-coin"/></svg> -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <radialGradient id="g-coin" cx="35%" cy="30%" r="75%"><stop offset="0" stop-color="#fff4c2"/><stop offset=".55" stop-color="#f1b648"/><stop offset="1" stop-color="#b9781e"/></radialGradient>
+      <radialGradient id="g-glow" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#fff1c8"/><stop offset=".6" stop-color="#ffbe6a"/><stop offset="1" stop-color="#e08a2c"/></radialGradient>
+      <linearGradient id="g-wax" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d0544a"/><stop offset="1" stop-color="#8d2f28"/></linearGradient>
+    </defs>
+    <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="url(#g-coin)" stroke="#8a5a1a" stroke-width="1.4"/><circle cx="12" cy="12" r="6.5" fill="none" stroke="#c48a2a" stroke-width="1.2"/><path d="M12 8.3v7.4M9.8 10.2h3.6a1.6 1.6 0 010 3.2H10.6" fill="none" stroke="#8a5a1a" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="i-window" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2" fill="#5a3c2c"/><rect x="6" y="5" width="12" height="14" rx="1" fill="url(#g-glow)"/><path d="M12 5v14M6 12h12" stroke="#5a3c2c" stroke-width="1.6"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2l-5.6 3 1.1-6.3L2.9 9.5l6.3-.9z" fill="currentColor"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="#ffd27a"/><g stroke="#ffd27a" stroke-width="2" stroke-linecap="round"><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7L7 17M17 7l1.7-1.7"/></g></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M15.5 3.2A8.8 8.8 0 1020.8 15a7 7 0 01-5.3-11.8z" fill="#fff1d0"/><circle cx="10" cy="11" r="1.2" fill="#e6d4ad"/><circle cx="13" cy="16" r=".9" fill="#e6d4ad"/></symbol>
+    <symbol id="i-rain" viewBox="0 0 24 24"><path d="M7 14a4 4 0 01.4-8 5.5 5.5 0 0110.4 1.4A3.4 3.4 0 0117.5 14z" fill="#c9d6e3"/><g stroke="#8fb6e0" stroke-width="1.8" stroke-linecap="round"><path d="M8 17l-1 3M12 17l-1 3M16 17l-1 3"/></g></symbol>
+    <symbol id="i-fog" viewBox="0 0 24 24"><g stroke="#d9e2e8" stroke-width="2.2" stroke-linecap="round"><path d="M4 8h12M7 12h13M3 16h11M9 20h9"/></g></symbol>
+    <symbol id="i-snow" viewBox="0 0 24 24"><g stroke="#eaf3ff" stroke-width="1.8" stroke-linecap="round"><path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9M9.5 4.5L12 7l2.5-2.5M9.5 19.5L12 17l2.5 2.5"/></g></symbol>
+    <symbol id="i-clear" viewBox="0 0 24 24"><path d="M12 3l1.6 5.4L19 10l-5.4 1.6L12 17l-1.6-5.4L5 10l5.4-1.6z" fill="#ffe6a8"/><circle cx="18.5" cy="18" r="1.4" fill="#ffe6a8"/><circle cx="5.5" cy="18.5" r="1" fill="#ffe6a8"/></symbol>
+    <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M5 19C4 10 10 4 20 4c0 10-6 16-15 15z" fill="#e08a3c"/><path d="M5 19L15 9" stroke="#8a4a1c" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="i-flower" viewBox="0 0 24 24"><g fill="#f2a0b4"><circle cx="12" cy="7" r="3.4"/><circle cx="17" cy="11" r="3.4"/><circle cx="15" cy="16.5" r="3.4"/><circle cx="9" cy="16.5" r="3.4"/><circle cx="7" cy="11" r="3.4"/></g><circle cx="12" cy="12" r="2.6" fill="#ffd27a"/></symbol>
+    <symbol id="i-sprout" viewBox="0 0 24 24"><path d="M12 21v-8" stroke="#6a9a5a" stroke-width="2" stroke-linecap="round"/><path d="M12 13C7 13 5 10 5 6c4 0 7 2 7 7zM12 12c0-5 3-8 7-8 0 5-3 8-7 8z" fill="#8fc27a"/></symbol>
+    <symbol id="i-box" viewBox="0 0 24 24"><path d="M3 8l9-4 9 4v9l-9 4-9-4z" fill="#d0a06a" stroke="#7a5230" stroke-width="1.3" stroke-linejoin="round"/><path d="M3 8l9 4 9-4M12 12v9" fill="none" stroke="#7a5230" stroke-width="1.3"/><path d="M7.5 6l9 4" stroke="#f0d6a8" stroke-width="2"/></symbol>
+    <symbol id="i-crate" viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="11" rx="1.5" fill="#b9845a" stroke="#6e4a36" stroke-width="1.3"/><path d="M3 13h18M3 16.5h18" stroke="#6e4a36" stroke-width="1"/><rect x="6" y="5" width="3" height="5" fill="#f3e6c8"/><rect x="10.5" y="4" width="3" height="6" fill="#e48f86"/><rect x="15" y="5.5" width="3" height="4.5" fill="#9cbf9a"/></symbol>
+    <symbol id="i-candle" viewBox="0 0 24 24"><path d="M12 2.5c2 2.4 2.2 4.2 0 5.8-2.2-1.6-2-3.4 0-5.8z" fill="url(#g-glow)"/><rect x="8.5" y="9" width="7" height="12" rx="1.4" fill="#f3e6c8" stroke="#b49a72" stroke-width="1"/><path d="M12 8.2V9.4" stroke="#3b2a20" stroke-width="1.2"/><path d="M8.6 11.5c1 .8 1.4 2 1.2 3" stroke="#ddc9a2" stroke-width="1.2" fill="none"/></symbol>
+    <symbol id="i-lamp" viewBox="0 0 24 24"><path d="M7 3h10l3 8H4z" fill="#ffd89a" stroke="#b37b3a" stroke-width="1.2" stroke-linejoin="round"/><path d="M12 11v7" stroke="#8a5a3b" stroke-width="2"/><ellipse cx="12" cy="20" rx="5" ry="1.8" fill="#8a5a3b"/></symbol>
+    <symbol id="i-lens" viewBox="0 0 24 24"><circle cx="10" cy="10" r="6.5" fill="#cfe9ef" stroke="#c99a3e" stroke-width="2.2"/><path d="M7.3 8.2a3.4 3.4 0 013-2.3" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M14.8 14.8l5.4 5.4" stroke="#8a5a3b" stroke-width="3" stroke-linecap="round"/></symbol>
+    <symbol id="i-glass" viewBox="0 0 24 24"><path d="M5 21V9a7 7 0 0114 0v12z" fill="#3b2a20"/><path d="M6.5 20V9.5A5.5 5.5 0 0112 4v16z" fill="#7fd6c6"/><path d="M12 4a5.5 5.5 0 015.5 5.5V14H12z" fill="#e48f86"/><path d="M12 14h5.5v6H12z" fill="#f0c05a"/><path d="M6.5 13H12" stroke="#3b2a20" stroke-width="1.2"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M12 3a1.5 1.5 0 011.5 1.5v.6a6 6 0 014.5 5.8V15l2 2.5H4L6 15v-4.1a6 6 0 014.5-5.8v-.6A1.5 1.5 0 0112 3z" fill="#e2b54a" stroke="#8a5a1a" stroke-width="1.2"/><circle cx="12" cy="19.8" r="1.8" fill="#8a5a1a"/></symbol>
+    <symbol id="i-letter" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="1.5" fill="#fff3dc" stroke="#b49a72" stroke-width="1.2"/><path d="M3.5 7l8.5 6.5L20.5 7" fill="none" stroke="#b49a72" stroke-width="1.2"/><circle cx="12" cy="13" r="2.4" fill="url(#g-wax)"/></symbol>
+    <symbol id="i-cat" viewBox="0 0 24 24"><path d="M5 9l1-5 4 3.5h4L18 4l1 5c1.2 1.3 2 3 2 5 0 4-4 6.5-9 6.5S3 18 3 14c0-2 .8-3.7 2-5z" fill="#6e756f"/><circle cx="9" cy="13" r="1.2" fill="#ffe6a8"/><circle cx="15" cy="13" r="1.2" fill="#ffe6a8"/><path d="M12 15l-1 1h2z" fill="#e48f86"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><path d="M10.2 2.5h3.6l.5 2.6 1.8.8 2.2-1.5 2.5 2.5-1.5 2.2.8 1.8 2.6.5v3.6l-2.6.5-.8 1.8 1.5 2.2-2.5 2.5-2.2-1.5-1.8.8-.5 2.6h-3.6l-.5-2.6-1.8-.8-2.2 1.5-2.5-2.5 1.5-2.2-.8-1.8-2.6-.5v-3.6l2.6-.5.8-1.8-1.5-2.2 2.5-2.5 2.2 1.5 1.8-.8z" fill="currentColor"/><circle cx="12" cy="12" r="3.4" fill="#3b2a20"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><rect x="2.5" y="7" width="19" height="13" rx="2" fill="#6e756f"/><path d="M8 7l1.5-2.5h5L16 7" fill="#6e756f"/><circle cx="12" cy="13.5" r="4.2" fill="#2f4a4f" stroke="#c99a3e" stroke-width="1.5"/><circle cx="18.2" cy="9.6" r="1" fill="#ffd27a"/></symbol>
+    <symbol id="i-radio" viewBox="0 0 24 24"><rect x="2.5" y="8" width="19" height="12" rx="2.5" fill="#8a5a3b"/><circle cx="8.5" cy="14" r="3.4" fill="#4b5350"/><rect x="14" y="11" width="5" height="2" rx="1" fill="#ffd89a"/><circle cx="16.5" cy="16.5" r="1.4" fill="#e2b54a"/><path d="M6 8l10-4.5" stroke="#4b5350" stroke-width="1.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M4.5 12.5l4.5 4.5L19.5 6.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-ledger" viewBox="0 0 24 24"><path d="M5 3.5h12.5a1.5 1.5 0 011.5 1.5v15.5H6.5A1.5 1.5 0 015 19z" fill="#7d3d35"/><path d="M7 5.5h10v12.5H7z" fill="#f6ecd8"/><path d="M9 9h6M9 12h6M9 15h4" stroke="#b49a72" stroke-width="1.2"/><path d="M14.5 3.5v6l1.5-1 1.5 1v-6" fill="#e2b54a"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 12.5V4.5A1.5 1.5 0 014.5 3h8L21 11.5 12.5 20z" fill="#f6ecd8" stroke="#b49a72" stroke-width="1.3" stroke-linejoin="round"/><circle cx="7.5" cy="7.5" r="1.8" fill="#8a5a3b"/></symbol>
+    <symbol id="i-people" viewBox="0 0 24 24"><circle cx="8.5" cy="8" r="3.2" fill="#e7b07a"/><circle cx="16" cy="9" r="2.8" fill="#d9a06a"/><path d="M2.5 20c0-4 2.7-6.5 6-6.5s6 2.5 6 6.5z" fill="#5e8a6c"/><path d="M13 20c.2-3.4 1.4-5.6 3.2-5.6 2.6 0 4.3 2.3 4.3 5.6z" fill="#b85a4c"/></symbol>
+    <symbol id="i-house" viewBox="0 0 24 24"><path d="M3 11l9-7.5 9 7.5" fill="#9a5a46"/><path d="M5 10.5h14V21H5z" fill="#efe1c6"/><rect x="10" y="14" width="4" height="7" fill="#4f6f6a"/><rect x="6.5" y="12.5" width="2.5" height="2.5" fill="url(#g-glow)"/><rect x="15" y="12.5" width="2.5" height="2.5" fill="url(#g-glow)"/><path d="M2 11.5L12 3l10 8.5" fill="none" stroke="#5a3c2c" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-hammer" viewBox="0 0 24 24"><path d="M13.5 9.5l7 7-2.5 2.5-7-7" fill="#8a5a3b"/><path d="M4 7.5l5-5 3.5 3.5-1.5 1.5 2 2-2.5 2.5-2-2L7 11.5z" fill="#6f7a74"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><path d="M8 11V8a4 4 0 018 0v3" fill="none" stroke="#6f7a74" stroke-width="2.2"/><rect x="5" y="11" width="14" height="10" rx="2" fill="#c99a3e"/><circle cx="12" cy="15.5" r="1.6" fill="#5a3c2c"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20.5S3 15 3 9a4.6 4.6 0 019-1.6A4.6 4.6 0 0121 9c0 6-9 11.5-9 11.5z" fill="#e07a6c"/></symbol>
+    <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" fill="currentColor"/></symbol>
+    <symbol id="i-chair" viewBox="0 0 24 24"><path d="M6 4h12v8H6z" fill="#b85a4c"/><path d="M4 11h16v5H4z" fill="#d06a5a"/><path d="M5 16v5M19 16v5" stroke="#6e4a36" stroke-width="2"/></symbol>
+    <symbol id="i-apron" viewBox="0 0 24 24"><circle cx="12" cy="5.5" r="3" fill="#e7b07a"/><path d="M6 21l1-10h10l1 10z" fill="#5e8a6c"/><path d="M9 11v-1a3 3 0 016 0v1" fill="none" stroke="#f6ecd8" stroke-width="1.4"/><rect x="9.5" y="14" width="5" height="3" rx=".6" fill="#f6ecd8"/></symbol>
+    <symbol id="i-festival" viewBox="0 0 24 24"><path d="M2 5c5 4 15 4 20 0" fill="none" stroke="#8a5a3b" stroke-width="1.2"/><g><path d="M5 7h3l-.5 4h-2z" fill="#e48f86"/><path d="M10.5 8.2h3l-.5 4h-2z" fill="#ffd27a"/><path d="M16 7h3l-.5 4h-2z" fill="#7fd6c6"/></g><path d="M12 22c-1.6-1.6-1.6-3.6 0-5.2 1.6 1.6 1.6 3.6 0 5.2z" fill="url(#g-glow)"/></symbol>
+    <symbol id="i-match" viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="10" rx="1.5" fill="#c8463b" stroke="#7a2a22" stroke-width="1.2"/><rect x="3" y="12" width="18" height="4" fill="#f3e6c8"/><path d="M14 9L19 3" stroke="#d9b48a" stroke-width="1.8" stroke-linecap="round"/><circle cx="19.4" cy="2.9" r="1.6" fill="#b3392e"/></symbol>
+    <symbol id="i-tin" viewBox="0 0 24 24"><ellipse cx="12" cy="16" rx="9" ry="4" fill="#9aa09a"/><rect x="3" y="10" width="18" height="6" fill="#b8bdb3"/><ellipse cx="12" cy="10" rx="9" ry="4" fill="#d8b65a" stroke="#8a6a2a" stroke-width="1"/><ellipse cx="12" cy="10" rx="4.5" ry="1.8" fill="#f6ecd8"/></symbol>
+    <symbol id="i-bottle" viewBox="0 0 24 24"><rect x="10" y="2.5" width="4" height="3.5" rx="1" fill="#b9895a"/><path d="M10 6h4v3l3 2.5V20a1.5 1.5 0 01-1.5 1.5h-7A1.5 1.5 0 017 20v-8.5L10 9z" fill="#d58f3a" stroke="#8a5a1a" stroke-width="1.1"/><rect x="8" y="13" width="8" height="4.5" rx=".6" fill="#f3e6c8"/></symbol>
+    <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M12 2.5a6.5 6.5 0 00-3.8 11.8V17h7.6v-2.7A6.5 6.5 0 0012 2.5z" fill="url(#g-glow)" stroke="#b37b3a" stroke-width="1.1"/><rect x="8.5" y="17" width="7" height="4" rx="1" fill="#a8aca2"/><path d="M10.5 12l1.5-3 1.5 3" fill="none" stroke="#b37b3a" stroke-width="1"/></symbol>
+    <symbol id="i-lantern" viewBox="0 0 24 24"><circle cx="12" cy="3.5" r="1.8" fill="none" stroke="#6f7a74" stroke-width="1.4"/><path d="M6.5 8L12 5l5.5 3z" fill="#6f7a74"/><rect x="7" y="8" width="10" height="11" rx="1" fill="url(#g-glow)" stroke="#6f7a74" stroke-width="1.6"/><path d="M12 8v11" stroke="#6f7a74" stroke-width="1.2"/><rect x="6" y="19" width="12" height="2.5" rx="1" fill="#6f7a74"/></symbol>
+    <symbol id="i-mouse-l" viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="6" fill="#f6ecd8" stroke="#5a3c2c" stroke-width="1.4"/><path d="M12 3v7H6V9a6 6 0 016-6z" fill="#ffb35c" stroke="#5a3c2c" stroke-width="1.2"/><path d="M6 10h12" stroke="#5a3c2c" stroke-width="1.2"/></symbol>
+    <symbol id="i-mouse-r" viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="6" fill="#f6ecd8" stroke="#5a3c2c" stroke-width="1.4"/><path d="M12 3v7h6V9a6 6 0 00-6-6z" fill="#8fb09a" stroke="#5a3c2c" stroke-width="1.2"/><path d="M6 10h12" stroke="#5a3c2c" stroke-width="1.2"/></symbol>
+    <symbol id="i-tap" viewBox="0 0 24 24"><circle cx="12" cy="8" r="5" fill="none" stroke="#ffb35c" stroke-width="1.6"/><path d="M10.5 8.5v7l-2-1.5c-1-.6-2 .6-1.2 1.5L11 20h6l1-5-.4-3.2c-.2-1.2-2-1.2-2.1.1V10c0-1-1.5-1-1.6 0v1.5V8.5c0-1-2.4-1-2.4 0z" fill="#f6ecd8" stroke="#5a3c2c" stroke-width="1.1"/></symbol>
+  </svg>
+
   <canvas id="view" aria-label="Lantern and Lens game view"></canvas>
 
-  <!-- Boot / title -->
+  <!-- Boot / title: a hanging shop sign -->
   <section id="title" class="screen is-open" aria-labelledby="title-name">
-    <div class="title-card">
-      <p class="eyebrow">a cozy night-shift shop</p>
-      <h1 id="title-name">Lantern <span class="amp">&amp;</span> Lens</h1>
-      <p class="title-sub">Stock the shelves. Pour the candles. Light up the village.</p>
-      <div id="loading" class="loading" role="status" aria-live="polite">
-        <div class="loading-bar"><i id="loading-fill"></i></div>
-        <span id="loading-text">Lighting the lamps…</span>
+    <div class="title-wrap">
+      <div class="chains" aria-hidden="true"><i></i><i></i></div>
+      <div class="sign-board">
+        <p class="eyebrow">est. at the edge of the forest</p>
+        <h1 id="title-name">Lantern <span class="amp">&amp;</span> Lens</h1>
+        <p class="title-sub">Stock the shelves · Pour the candles · Light up the village</p>
       </div>
-      <div id="slots" class="slots" hidden></div>
-      <p class="title-foot">Best with headphones · <kbd>WASD</kbd> move · mouse look · <kbd>Click</kbd> use</p>
+      <div class="title-paper">
+        <div id="loading" class="loading" role="status" aria-live="polite">
+          <div class="wick"><i id="loading-fill"></i></div>
+          <span id="loading-text">Lighting the lamps…</span>
+        </div>
+        <div id="slots" class="slots" hidden></div>
+        <p class="title-foot">Best with headphones · <kbd>W A S D</kbd> walk · mouse to look · <kbd>Click</kbd> to use</p>
+      </div>
     </div>
   </section>
 
   <!-- In-game HUD -->
   <div id="hud" class="hud" hidden>
     <div class="hud-tl">
-      <div class="chip clock"><span id="hud-phase" class="phase-dot"></span><b id="hud-time">18:00</b><span id="hud-night">Night 1</span></div>
-      <div class="chip weather" id="hud-weather">Clear</div>
+      <div class="plaque clock-plaque">
+        <div class="dial" aria-hidden="true">
+          <div id="hud-dial" class="dial-hand"><svg class="ico sun"><use href="#i-sun"/></svg><svg class="ico moon"><use href="#i-moon"/></svg></div>
+        </div>
+        <div class="clock-text"><b id="hud-time">18:00</b><small id="hud-night">Night 1</small></div>
+        <span id="hud-weather" class="weather-ico" title="Weather"><svg class="ico"><use href="#i-clear"/></svg></span>
+      </div>
     </div>
     <div class="hud-tr">
-      <div class="chip coins"><span class="coin-ico" aria-hidden="true"></span><b id="hud-coins">0</b></div>
-      <div class="chip level"><span>Lv <b id="hud-level">1</b></span><div class="xpbar"><i id="hud-xp"></i></div></div>
-      <div class="chip lit" title="Windows lit in the village"><span class="win-ico" aria-hidden="true"></span><b id="hud-lit">0</b>/<span id="hud-lit-total">0</span></div>
-      <button id="btn-menu" class="chip btn-ico" aria-label="Menu">☰</button>
+      <div class="purse" title="Coins"><svg class="ico"><use href="#i-coin"/></svg><b id="hud-coins">0</b></div>
+      <div class="seal" title="Shop level">
+        <svg class="ring" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="19" class="ring-bg"/><circle id="hud-xp" cx="22" cy="22" r="19" class="ring-fg" stroke-dasharray="119.4" stroke-dashoffset="119.4"/></svg>
+        <b id="hud-level">1</b>
+      </div>
+      <div class="lit-plaque" title="Windows lit in the village"><svg class="ico"><use href="#i-window"/></svg><b id="hud-lit">0</b><small>/<span id="hud-lit-total">0</span></small></div>
+      <button id="btn-menu" class="knob" aria-label="Settings"><svg class="ico"><use href="#i-gear"/></svg></button>
     </div>
-    <div id="crosshair" class="crosshair" aria-hidden="true"></div>
+
+    <div id="guide" class="guide-card" hidden>
+      <div class="guide-step"><span id="guide-num">1</span></div>
+      <div class="guide-text"><b id="guide-title"></b><span id="guide-body"></span><div id="guide-pips" class="pips"></div></div>
+      <button id="guide-skip" class="guide-skip">Skip tutorial</button>
+    </div>
+
+    <div id="crosshair" class="crosshair" aria-hidden="true"><i></i></div>
     <div id="prompt" class="prompt" aria-live="polite"></div>
-    <div id="held" class="held-chip" hidden></div>
+    <div id="held" class="basket" hidden></div>
     <div id="toasts" class="toasts" aria-live="polite"></div>
-    <div id="hint" class="hint"></div>
+    <div id="fps" class="fps" hidden></div>
   </div>
 
   <!-- Touch controls -->
@@ -66,27 +139,33 @@
     </div>
   </div>
 
-  <!-- Panels (paper modal) -->
+  <!-- Panels -->
   <div id="panel-wrap" class="panel-wrap" hidden>
     <div id="panel" class="panel" role="dialog" aria-modal="true" aria-labelledby="panel-title">
-      <header><h2 id="panel-title"></h2><button id="panel-close" class="x" aria-label="Close">×</button></header>
+      <header><span id="panel-ico" class="panel-ico"></span><h2 id="panel-title"></h2><button id="panel-close" class="x" aria-label="Close">×</button></header>
       <div id="panel-body" class="panel-body"></div>
     </div>
   </div>
 
-  <!-- Station overlay (crafting) -->
+  <!-- Workbench overlay -->
   <div id="station" class="station" hidden>
     <div class="station-head"><h3 id="station-title"></h3><p id="station-step"></p></div>
     <div id="station-ui" class="station-ui"></div>
     <button id="station-leave" class="btn ghost">Leave bench <kbd>Esc</kbd></button>
   </div>
 
+  <!-- Decor placement bar -->
+  <div id="place-bar" class="place-bar" hidden>
+    <b id="place-name"></b>
+    <span><kbd>Click</kbd> place · <kbd>Q</kbd>/<kbd>scroll</kbd> rotate · <kbd>Right-click</kbd> put away</span>
+  </div>
+
   <!-- Photo mode -->
   <div id="photo" class="photo" hidden>
     <div class="photo-bar">
-      <span>Photo mode — <kbd>WASD</kbd> fly · <kbd>Q</kbd>/<kbd>E</kbd> down/up</span>
+      <span>Photo mode — <kbd>W A S D</kbd> fly · <kbd>Q</kbd>/<kbd>E</kbd> down/up</span>
       <button id="photo-filter" class="btn ghost">Filter: Warm</button>
-      <button id="photo-snap" class="btn">Capture</button>
+      <button id="photo-snap" class="btn amber">Capture</button>
       <button id="photo-exit" class="btn ghost">Exit <kbd>P</kbd></button>
     </div>
   </div>

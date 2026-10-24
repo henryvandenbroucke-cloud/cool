@@ -72,7 +72,8 @@ export async function buildShop(scene, ctx) {
   const SMALLWIN = [0.4, 1.6, 1.0, 2.25];
   const DOORHOLE = [DOOR.x0, DOOR.x1, 0, DOOR.h];
   wallAlongX(ROOM.maxZ, ROOM.maxZ + T, [BIGWIN, SMALLWIN, DOORHOLE], 5);
-  wallAlongX(ROOM.minZ - T, ROOM.minZ, [[-1.0, 0.0, 1.2, 2.2]], 4);
+  const STUDIO_DOOR = [3.1, 4.1, 0, 2.15];
+  wallAlongX(ROOM.minZ - T, ROOM.minZ, [[-1.0, 0.0, 1.2, 2.2], STUDIO_DOOR], 4);
   // side walls along z
   const sideWall = (x0, x1, inner, holes = []) => {
     const zs = [ROOM.minZ, ...holes.flatMap((h) => [h[0], h[1]]), ROOM.maxZ];
@@ -87,7 +88,8 @@ export async function buildShop(scene, ctx) {
   colliders.push(
     { minX: ROOM.minX - T, maxX: ROOM.minX, minZ: ROOM.minZ - T, maxZ: ROOM.maxZ + T },
     { minX: ROOM.maxX, maxX: ROOM.maxX + T, minZ: ROOM.minZ - T, maxZ: ROOM.maxZ + T },
-    { minX: ROOM.minX - T, maxX: ROOM.maxX + T, minZ: ROOM.minZ - T, maxZ: ROOM.minZ },
+    { minX: ROOM.minX - T, maxX: STUDIO_DOOR[0], minZ: ROOM.minZ - T, maxZ: ROOM.minZ },
+    { minX: STUDIO_DOOR[1], maxX: ROOM.maxX + T, minZ: ROOM.minZ - T, maxZ: ROOM.minZ },
     { minX: ROOM.minX - T, maxX: DOOR.x0, minZ: ROOM.maxZ, maxZ: ROOM.maxZ + T },
     { minX: DOOR.x1, maxX: ROOM.maxX + T, minZ: ROOM.maxZ, maxZ: ROOM.maxZ + T },
   );
@@ -107,7 +109,8 @@ export async function buildShop(scene, ctx) {
     skirt.rotation.y = rotY;
     root.add(skirt);
   };
-  wain(0, ROOM.minZ + 0.016, 10, 0);
+  wain(-0.95, ROOM.minZ + 0.016, 8.1, 0);
+  wain(4.55, ROOM.minZ + 0.016, 0.9, 0);
   wain(ROOM.minX + 0.016, 0, 8, Math.PI / 2);
   wain(ROOM.maxX - 0.016, 0, 8, Math.PI / 2);
   wain(-4.65, ROOM.maxZ - 0.016, 0.7, 0);
@@ -178,6 +181,7 @@ export async function buildShop(scene, ctx) {
   sign.rotation.y = Math.PI;
   leaf.add(sign);
   doorPivot.add(leaf);
+  doorPivot.userData.dynamic = true;
   root.add(doorPivot);
   const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(DOOR.x1 - DOOR.x0 + 0.2, 0.14, T + 0.08), trimMat);
   doorFrame.position.set((DOOR.x0 + DOOR.x1) / 2, DOOR.h + 0.07, ROOM.maxZ + T / 2);
@@ -192,6 +196,7 @@ export async function buildShop(scene, ctx) {
   bellPivot.position.set(DOOR.x1 - 0.2, DOOR.h - 0.02, ROOM.maxZ - 0.08);
   bell.position.y = -0.08;
   bellPivot.add(bell);
+  bellPivot.userData.dynamic = true;
   root.add(bellPivot);
   const signHit = hit(new THREE.BoxGeometry(0.5, 0.3, 0.12), new THREE.Vector3(), { type: 'sign' });
   sign.add(signHit);
@@ -262,7 +267,11 @@ export async function buildShop(scene, ctx) {
     const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.45, 4), m('#4b5350'));
     chain.position.set(x, ROOM.h - 0.22, z);
     root.add(chain);
-    const light = new THREE.PointLight('#ffb766', 6, 9, 1.6);
+  }
+  // Few real lights (each one costs every pixel); the lanterns themselves glow.
+  // Ordered by priority: quality tiers switch them on from the front.
+  for (const [x, z, i, d] of [[-0.9, 0.2, 7, 11], [3.9, 0.3, 5, 8], [-1.6, -2.9, 4, 7]]) {
+    const light = new THREE.PointLight('#ffb766', i, d, 1.5);
     light.position.set(x, ROOM.h - 0.75, z);
     root.add(light);
     lights.push(light);
@@ -280,6 +289,7 @@ export async function buildShop(scene, ctx) {
   const register = buildRegister();
   register.position.set(3.72, 1.02, 0.05);
   register.rotation.y = -Math.PI / 2;
+  register.userData.dynamic = true;
   root.add(register);
   register.add(hit(new THREE.BoxGeometry(0.5, 0.4, 0.45), new THREE.Vector3(0, 0.18, 0), { type: 'register' }));
   const ledger = buildLedger();
@@ -323,102 +333,25 @@ export async function buildShop(scene, ctx) {
     clock.add(t);
   }
   clock.position.set(4.97, 2.15, 0.3);
+  clock.userData.dynamic = true;
   root.add(clock);
 
   // ---------- shelves ----------
   const sections = new Map();
-  const shelfWood = toon('#ffffff', { map: textures.planks([1, 1]) });
-  const tagGroup = [];
-  const buildUnit = (id, x, z, rotY, { levels = [0.28, 0.78, 1.28], height = 1.85, backed = true } = {}) => {
-    const W = 1.6, D = 0.44;
-    const unit = new THREE.Group();
-    unit.position.set(x, 0, z);
-    unit.rotation.y = rotY;
-    root.add(unit);
-    const side = (sx) => { const s = new THREE.Mesh(new RoundedBoxGeometry(0.06, height, D, 2, 0.012), shelfWood); s.position.set(sx, height / 2, 0); unit.add(s); };
-    side(-W / 2); side(W / 2);
-    if (backed) { const back = new THREE.Mesh(new THREE.BoxGeometry(W, height, 0.03), m('#a8754c')); back.position.set(0, height / 2, -D / 2 + 0.015); unit.add(back); }
-    const topB = new THREE.Mesh(new RoundedBoxGeometry(W + 0.08, 0.05, D + 0.04, 2, 0.012), shelfWood);
-    topB.position.set(0, height, 0);
-    unit.add(topB);
-    const plinth = new THREE.Mesh(new THREE.BoxGeometry(W, 0.1, D - 0.04), m('#6e4a36'));
-    plinth.position.y = 0.05;
-    unit.add(plinth);
-    levels.forEach((y, li) => {
-      const board = new THREE.Mesh(new RoundedBoxGeometry(W - 0.06, 0.035, D - 0.02, 2, 0.01), shelfWood);
-      board.position.set(0, y, 0);
-      unit.add(board);
-      const lip = new THREE.Mesh(new THREE.BoxGeometry(W - 0.06, 0.05, 0.02), m('#8a5a3b'));
-      lip.position.set(0, y - 0.005, D / 2 - 0.01);
-      unit.add(lip);
-      for (let si = 0; si < 2; si++) {
-        const sid = `${id}-${li}${si}`;
-        const cx = -W / 4 + (si * W) / 2;
-        const holder = new THREE.Group();
-        holder.position.set(cx, y + 0.018, 0.0);
-        unit.add(holder);
-        const tagMat = new THREE.MeshToonMaterial({ map: textures.label('—', { size: 40, w: 160, h: 72 }), gradientMap: m('#fff').gradientMap });
-        const tag = new THREE.Mesh(new THREE.PlaneGeometry(0.13, 0.058), tagMat);
-        tag.position.set(cx, y - 0.003, D / 2 + 0.002);
-        unit.add(tag);
-        tagGroup.push(tag);
-        const hitbox = hit(new THREE.BoxGeometry(W / 2 - 0.04, 0.42, D), new THREE.Vector3(cx, y + 0.21, 0), { type: 'section', id: sid });
-        unit.add(hitbox);
-        const tagHit = hit(new THREE.BoxGeometry(0.16, 0.08, 0.06), new THREE.Vector3(cx, y - 0.003, D / 2 + 0.01), { type: 'tag', id: sid });
-        unit.add(tagHit);
-        unit.updateMatrixWorld(true);
-        const front = new THREE.Vector3(cx, 0, D / 2 + 0.55).applyMatrix4(unit.matrixWorld);
-        front.y = 0;
-        sections.set(sid, { id: sid, holder, tag, tagMat, width: W / 2 - 0.08, depth: D - 0.08, maxH: li < levels.length - 1 ? levels[li + 1] - y - 0.06 : height - y - 0.06, customerSpot: front, unit, level: li, items: [] });
-      }
-    });
-    // collider in world space
-    const hw = W / 2 + 0.05, hd = D / 2 + 0.03;
-    const c = Math.abs(Math.cos(rotY)), s = Math.abs(Math.sin(rotY));
-    const ex = hw * c + hd * s, ez = hw * s + hd * c;
-    colliders.push({ minX: x - ex, maxX: x + ex, minZ: z - ez, maxZ: z + ez });
-    return unit;
+  const shelfWoodM = shelfWood();
+  const shelfCtx = { hit };
+  const register_ = (built) => {
+    root.add(built.group);
+    for (const sec of built.sections) sections.set(sec.id, sec);
+    colliders.push(built.collider);
+    return built;
   };
-  buildUnit('A', -4.74, -1.15, Math.PI / 2);
-  buildUnit('B', -4.74, 1.35, Math.PI / 2);
-  buildUnit('C', -1.86, 0.1, -Math.PI / 2, { backed: true });
-  buildUnit('D', -1.36, 0.1, Math.PI / 2, { backed: false });
-
-  // display table under the big window
-  const table = new THREE.Group();
-  table.position.set(-2.55, 0, 3.35);
-  root.add(table);
-  const ttop = new THREE.Mesh(new RoundedBoxGeometry(2.2, 0.07, 0.75, 2, 0.02), shelfWood);
-  ttop.position.y = 0.74;
-  table.add(ttop);
-  for (const [lx, lz] of [[-1.0, -0.3], [1.0, -0.3], [-1.0, 0.3], [1.0, 0.3]]) {
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.72, 0.07), m('#6e4a36'));
-    leg.position.set(lx, 0.36, lz);
-    table.add(leg);
-  }
-  const cloth = new THREE.Mesh(new THREE.BoxGeometry(2.24, 0.01, 0.4), m('#b85a4c'));
-  cloth.position.set(0, 0.78, 0);
-  table.add(cloth);
-  colliders.push({ minX: -3.7, maxX: -1.4, minZ: 2.92, maxZ: 3.78 });
-  table.updateMatrixWorld(true);
-  for (let si = 0; si < 2; si++) {
-    const sid = `W-0${si}`;
-    const cx = -0.55 + si * 1.1;
-    const holder = new THREE.Group();
-    holder.position.set(cx, 0.78, 0);
-    holder.rotation.y = Math.PI;
-    table.add(holder);
-    const tagMat = new THREE.MeshToonMaterial({ map: textures.label('—', { size: 40, w: 160, h: 72 }), gradientMap: m('#fff').gradientMap });
-    const tag = new THREE.Mesh(new THREE.PlaneGeometry(0.13, 0.058), tagMat);
-    tag.position.set(cx, 0.74, -0.38);
-    tag.rotation.y = Math.PI;
-    table.add(tag);
-    table.add(hit(new THREE.BoxGeometry(1.0, 0.5, 0.7), new THREE.Vector3(cx, 1.02, 0), { type: 'section', id: sid }));
-    table.add(hit(new THREE.BoxGeometry(0.16, 0.08, 0.06), new THREE.Vector3(cx, 0.74, -0.39), { type: 'tag', id: sid }));
-    const front = new THREE.Vector3(cx, 0, -0.9).applyMatrix4(table.matrixWorld);
-    front.y = 0;
-    sections.set(sid, { id: sid, holder, tag, tagMat, width: 0.98, depth: 0.6, maxH: 0.8, customerSpot: front, unit: table, level: 0, items: [] });
-  }
+  register_(makeShelfUnit(shelfCtx, 'A', -4.74, -1.15, Math.PI / 2));
+  register_(makeShelfUnit(shelfCtx, 'B', -4.74, 1.35, Math.PI / 2));
+  register_(makeShelfUnit(shelfCtx, 'C', -1.86, 0.1, -Math.PI / 2));
+  register_(makeShelfUnit(shelfCtx, 'D', -1.36, 0.1, Math.PI / 2, { backed: false }));
+  // display table under the big window, customers browse it from the room side
+  register_(makeTable(shelfCtx, 'W', -2.55, 3.35, Math.PI, { width: 2.2, cloth: true }));
 
   // ---------- workshop: candle station ----------
   const stove = await placeable('furniture/kitchenStove.glb', { height: 0.92 });
@@ -430,7 +363,7 @@ export async function buildShop(scene, ctx) {
     const t = new THREE.Mesh(new RoundedBoxGeometry(w, 0.07, 0.72, 2, 0.02), m(color));
     t.position.y = 0.9;
     g.add(t);
-    const body = new THREE.Mesh(uvBox(w - 0.06, 0.86, 0.66, 1.2), shelfWood);
+    const body = new THREE.Mesh(uvBox(w - 0.06, 0.86, 0.66, 1.2), shelfWoodM);
     body.position.y = 0.43;
     g.add(body);
     root.add(g);
@@ -444,21 +377,24 @@ export async function buildShop(scene, ctx) {
   const waxSurface = new THREE.Mesh(new THREE.CircleGeometry(0.165, 24), m('#f3e6c8'));
   waxSurface.rotation.x = -Math.PI / 2;
   waxSurface.position.set(-4.3, 1.08, -3.55);
+  waxSurface.userData.dynamic = true;
   root.add(waxSurface);
   const stoveFlame = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.02, 6, 16), glow('#7fb6ff', 2.0));
   stoveFlame.rotation.x = Math.PI / 2;
   stoveFlame.position.set(-4.3, 0.925, -3.55);
   stoveFlame.layers.set(LAYER_NO_INK);
+  stoveFlame.userData.dynamic = true;
   root.add(stoveFlame);
   // moulds tray + dye shelf
   const tray = new THREE.Mesh(new RoundedBoxGeometry(0.9, 0.04, 0.4, 2, 0.01), m('#a8aca2'));
   tray.position.set(-2.8, 0.955, -3.55);
   root.add(tray);
-  const dyeShelf = new THREE.Mesh(new RoundedBoxGeometry(1.6, 0.05, 0.25, 2, 0.01), shelfWood);
+  const dyeShelf = new THREE.Mesh(new RoundedBoxGeometry(1.6, 0.05, 0.25, 2, 0.01), shelfWoodM);
   dyeShelf.position.set(-2.95, 1.62, -3.86);
   root.add(dyeShelf);
   const candleSupplyBin = new THREE.Group();
   candleSupplyBin.position.set(-2.1, 0.94, -3.5);
+  candleSupplyBin.userData.dynamic = true;
   root.add(candleSupplyBin);
   // bench props: moulds, wick spools, dye bottles, wax blocks
   for (let i = 0; i < 4; i++) {
@@ -504,6 +440,7 @@ export async function buildShop(scene, ctx) {
   root.add(hammer);
   const lampSupplyBin = new THREE.Group();
   lampSupplyBin.position.set(1.75, 0.94, -3.5);
+  lampSupplyBin.userData.dynamic = true;
   root.add(lampSupplyBin);
   // lamp bench props: bulbs, shade frames, wire spool, screwdriver
   for (let i = 0; i < 3; i++) {
@@ -529,6 +466,7 @@ export async function buildShop(scene, ctx) {
   root.add(hit(new THREE.BoxGeometry(1.9, 0.9, 0.8), new THREE.Vector3(1.0, 1.2, -3.5), { type: 'station', id: 'lamp' }));
   const lampLocked = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.22), new THREE.MeshToonMaterial({ map: textures.label('Licence needed', { size: 30, w: 300, h: 96 }), gradientMap: m('#fff').gradientMap }));
   lampLocked.position.set(1.0, 1.25, -3.94);
+  lampLocked.userData.dynamic = true;
   root.add(lampLocked);
 
   // finished-goods crates
@@ -539,6 +477,7 @@ export async function buildShop(scene, ctx) {
     root.add(c);
     const contents = new THREE.Group();
     contents.position.set(x, 0.12, -3.55);
+    contents.userData.dynamic = true;
     root.add(contents);
     crates[id] = { group: c, contents, pos: c.position.clone() };
     c.add(hit(new THREE.BoxGeometry(0.6, 0.6, 0.6), new THREE.Vector3(0, 0.3, 0), { type: 'crate', id }));
@@ -547,13 +486,18 @@ export async function buildShop(scene, ctx) {
 
   // ---------- corkboard ----------
   const board = new THREE.Mesh(new RoundedBoxGeometry(1.3, 0.9, 0.04, 2, 0.02), [m('#8a5a3b'), m('#8a5a3b'), m('#8a5a3b'), m('#8a5a3b'), toon('#ffffff', { map: textures.cork() }), m('#8a5a3b')]);
-  board.position.set(3.55, 1.65, -3.96);
+  board.position.set(4.96, 1.65, -1.95);
+  board.rotation.y = -Math.PI / 2;
   root.add(board);
   const pins = new THREE.Group();
   pins.position.copy(board.position);
-  pins.position.z += 0.03;
+  pins.position.x -= 0.03;
+  pins.rotation.y = -Math.PI / 2;
+  pins.userData.dynamic = true;
   root.add(pins);
-  root.add(hit(new THREE.BoxGeometry(1.4, 1.0, 0.2), board.position.clone(), { type: 'board' }));
+  const boardHit = hit(new THREE.BoxGeometry(1.4, 1.0, 0.2), board.position.clone(), { type: 'board' });
+  boardHit.rotation.y = -Math.PI / 2;
+  root.add(boardHit);
 
   // ---------- decor ----------
   const deco = async (path, opts, x, z, ry = 0, y = 0, collide = null) => {
@@ -568,7 +512,7 @@ export async function buildShop(scene, ctx) {
   await deco('furniture/rugRectangle.glb', { width: 2.2 }, -3.05, -0.2, Math.PI / 2);
   await deco('furniture/rugDoormat.glb', { width: 1.0 }, 2.9, 3.55);
   await deco('furniture/pottedPlant.glb', { height: 1.2 }, -4.55, 3.55, 0, 0, [0.25, 0.25]);
-  await deco('furniture/pottedPlant.glb', { height: 1.0 }, 4.55, -2.2, 1, 0, [0.25, 0.25]);
+  await deco('furniture/pottedPlant.glb', { height: 1.0 }, 4.6, -3.6, 1, 0, [0.25, 0.25]);
   await deco('furniture/coatRackStanding.glb', { height: 1.75 }, 4.55, 3.55, 0, 0, [0.2, 0.2]);
   await deco('furniture/loungeChair.glb', { width: 0.95 }, 0.95, 3.1, Math.PI + 0.4, 0, [0.45, 0.4]);
   await deco('furniture/stoolBar.glb', { height: 0.75 }, 4.5, 0.0, 0, 0, null);
@@ -594,18 +538,173 @@ export async function buildShop(scene, ctx) {
     cd.position.set(x, 0.84, ROOM.maxZ + 0.02);
     root.add(cd);
   }
-  const winLight = new THREE.PointLight('#ffb766', 2.5, 5, 2);
-  winLight.position.set(-2.6, 1.3, 3.6);
-  root.add(winLight);
-  lights.push(winLight);
   const porchLight = new THREE.PointLight('#ffc27a', 5, 8, 1.6);
   porchLight.position.set(3.95, 2.0, 4.9);
   root.add(porchLight);
 
+  // ---------- expansion: back studio (hidden until built) ----------
+  const studio = new THREE.Group();
+  studio.userData.dynamic = true;   // baked on its own
+  studio.visible = false;
+  root.add(studio);
+  const SX0 = 1.4, SX1 = 5.0, SZ0 = -7.8, SZ1 = ROOM.minZ - T;
+  const studioSeg = (x0, x1, y0, y1, z0, z1, inner) => {
+    const mats = [logMat, logMat, trimMat, trimMat, logMat, logMat];
+    mats[inner] = plasterMat;
+    const mesh = new THREE.Mesh(uvBox(x1 - x0, y1 - y0, z1 - z0, 0.6), mats);
+    mesh.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+    studio.add(mesh);
+  };
+  const SH = 2.7;
+  studioSeg(SX0 - T, SX0, 0, 0.9, SZ0 - T, SZ1, 0);
+  studioSeg(SX0 - T, SX0, 2.0, SH, SZ0 - T, SZ1, 0);
+  studioSeg(SX0 - T, SX0, 0.9, 2.0, SZ0 - T, -6.6, 0);
+  studioSeg(SX0 - T, SX0, 0.9, 2.0, -5.4, SZ1, 0);
+  studioSeg(SX1, SX1 + T, 0, SH, SZ0 - T, SZ1, 1);
+  studioSeg(SX0 - T, SX1 + T, 0, SH, SZ0 - T, SZ0, 4);
+  const sFloor = new THREE.Mesh(new THREE.PlaneGeometry(SX1 - SX0, SZ1 - SZ0), toon('#ffffff', { map: textures.planks([2, 2]) }));
+  sFloor.rotation.x = -Math.PI / 2;
+  sFloor.position.set((SX0 + SX1) / 2, 0.003, (SZ0 + SZ1) / 2);
+  studio.add(sFloor);
+  const sCeil = new THREE.Mesh(new THREE.PlaneGeometry(SX1 - SX0 + 0.4, SZ1 - SZ0 + 0.4), toon('#e9d3b0', { map: textures.planks([2, 2]) }));
+  sCeil.rotation.x = Math.PI / 2;
+  sCeil.position.set((SX0 + SX1) / 2, SH, (SZ0 + SZ1) / 2);
+  studio.add(sCeil);
+  const sRoof = new THREE.Mesh(uvBox(SX1 - SX0 + 1.0, 0.14, SZ1 - SZ0 + 0.9, 0.6), roofMat);
+  sRoof.position.set((SX0 + SX1) / 2, SH + 0.35, (SZ0 + SZ1) / 2 - 0.1);
+  sRoof.rotation.x = -0.18;
+  studio.add(sRoof);
+  const sWinGlass = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.1), glassMat);
+  sWinGlass.layers.set(LAYER_NO_INK);
+  sWinGlass.rotation.y = Math.PI / 2;
+  sWinGlass.position.set(SX0 - T / 2, 1.45, -6.0);
+  studio.add(sWinGlass);
+  const sLantern = tinLantern({ lit: true });
+  sLantern.scale.setScalar(2.2);
+  sLantern.position.set(3.2, SH - 0.95, -6.0);
+  studio.add(sLantern);
+  // lens grinding bench: a treadle wheel on a sturdy table
+  const lensBench = new THREE.Group();
+  lensBench.position.set(2.4, 0, -7.35);
+  const lbTop = new THREE.Mesh(new RoundedBoxGeometry(1.5, 0.07, 0.7, 2, 0.02), m('#6e4a36'));
+  lbTop.position.y = 0.9;
+  const lbBody = new THREE.Mesh(uvBox(1.44, 0.86, 0.64, 1.2), shelfWoodM);
+  lbBody.position.y = 0.43;
+  const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.05, 28), m('#a8aca2'));
+  wheel.rotation.z = Math.PI / 2;
+  wheel.position.set(-0.45, 1.16, -0.1);
+  const wheelStand = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.24, 0.06), m('#4b5350'));
+  wheelStand.position.set(-0.45, 1.0, -0.1);
+  lensBench.add(lbTop, lbBody, wheel, wheelStand);
+  studio.add(lensBench);
+  const lensSupplyBin = new THREE.Group();
+  lensSupplyBin.position.set(3.0, 0.94, -7.3);
+  lensSupplyBin.userData.dynamic = true;
+  studio.add(lensSupplyBin);
+  // stained glass bench: a glowing light table
+  const glassBench = new THREE.Group();
+  glassBench.position.set(4.15, 0, -7.35);
+  const gbBody = new THREE.Mesh(uvBox(1.44, 0.86, 0.64, 1.2), shelfWoodM);
+  gbBody.position.y = 0.43;
+  const gbFrame = new THREE.Mesh(new RoundedBoxGeometry(1.5, 0.07, 0.7, 2, 0.02), m('#5a3c2c'));
+  gbFrame.position.y = 0.9;
+  const lightTable = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.5), glow('#fff3dc', 1.25));
+  lightTable.rotation.x = -Math.PI / 2;
+  lightTable.position.y = 0.94;
+  glassBench.add(gbBody, gbFrame, lightTable);
+  studio.add(glassBench);
+  for (const [x, c] of [[3.55, '#f0a04a'], [3.62, '#4fb0a4'], [3.69, '#e07a7c'], [3.76, '#9a7ad0']]) {
+    const sheet = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.5, 0.4), toon(c, { transparent: true, opacity: 0.8 }));
+    sheet.position.set(x + 1.0, 1.25, -7.62);
+    studio.add(sheet);
+  }
+  const glassSupplyBin = new THREE.Group();
+  glassSupplyBin.position.set(4.75, 0.94, -7.3);
+  glassSupplyBin.userData.dynamic = true;
+  studio.add(glassSupplyBin);
+  const lensSpot = { center: new THREE.Vector3(2.4, 0.95, -7.3), cam: new THREE.Vector3(2.4, 1.75, -6.3), look: new THREE.Vector3(2.4, 0.98, -7.35), supplyBin: lensSupplyBin, wheel };
+  const glassSpot = { center: new THREE.Vector3(4.15, 0.95, -7.3), cam: new THREE.Vector3(4.15, 1.95, -6.55), look: new THREE.Vector3(4.15, 0.95, -7.3), supplyBin: glassSupplyBin };
+  studio.add(hit(new THREE.BoxGeometry(1.5, 0.9, 0.8), new THREE.Vector3(2.4, 1.2, -7.3), { type: 'station', id: 'lens' }));
+  studio.add(hit(new THREE.BoxGeometry(1.5, 0.9, 0.8), new THREE.Vector3(4.15, 1.2, -7.3), { type: 'station', id: 'glass' }));
+  const studioColliders = [
+    { minX: SX0 - T, maxX: SX0, minZ: SZ0 - T, maxZ: SZ1 },
+    { minX: SX1, maxX: SX1 + T, minZ: SZ0 - T, maxZ: SZ1 },
+    { minX: SX0 - T, maxX: SX1 + T, minZ: SZ0 - T, maxZ: SZ0 },
+    { minX: 1.6, maxX: 4.95, minZ: -7.8, maxZ: -6.95 },
+  ];
+  for (const [id, x] of [['lens', 1.75], ['glass', 4.75]]) {
+    const c = await placeable('survival/box-open.glb', { width: 0.5 });
+    c.position.set(x, 0, -6.55);
+    studio.add(c);
+    const contents = new THREE.Group();
+    contents.position.set(x, 0.12, -6.55);
+    contents.userData.dynamic = true;
+    studio.add(contents);
+    crates[id] = { group: c, contents, pos: c.position.clone() };
+    c.add(hit(new THREE.BoxGeometry(0.6, 0.6, 0.6), new THREE.Vector3(0, 0.3, 0), { type: 'crate', id }));
+    studioColliders.push({ minX: x - 0.28, maxX: x + 0.28, minZ: -6.83, maxZ: -6.27 });
+  }
+  // boards across the doorway until the studio is built
+  const boards = new THREE.Group();
+  boards.userData.dynamic = true;
+  for (let k = 0; k < 4; k++) {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.16, 0.05), m('#a8754c'));
+    b.position.set(3.6, 0.45 + k * 0.48, ROOM.minZ + 0.06);
+    b.rotation.z = (k % 2 ? 1 : -1) * 0.12;
+    boards.add(b);
+  }
+  const soonSign = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.22), new THREE.MeshToonMaterial({ map: textures.label('Back Studio', { size: 30, w: 300, h: 96 }), gradientMap: m('#fff').gradientMap }));
+  soonSign.position.set(3.6, 1.6, ROOM.minZ + 0.1);
+  boards.add(soonSign);
+  root.add(boards);
+  const studioGate = { minX: STUDIO_DOOR[0], maxX: STUDIO_DOOR[1], minZ: ROOM.minZ - T, maxZ: ROOM.minZ };
+  colliders.push(studioGate);
+
+  // ---------- expansion: porch market stall (hidden until built) ----------
+  const stall = makeTable(shelfCtx, 'S', -3.6, 5.55, 0, { width: 1.9, cloth: true, stall: true });
+  stall.group.userData.dynamic = true;
+  stall.group.visible = false;
+  root.add(stall.group);
+
+  const drop = (c) => { const i = colliders.indexOf(c); if (i >= 0) colliders.splice(i, 1); };
+  const expansions = {
+    studio: {
+      open: () => {
+        if (studio.visible) return;
+        studio.visible = true;
+        boards.visible = false;
+        drop(studioGate);
+        colliders.push(...studioColliders);
+      },
+      close: () => {
+        if (!studio.visible) return;
+        studio.visible = false;
+        boards.visible = true;
+        studioColliders.forEach(drop);
+        colliders.push(studioGate);
+      },
+    },
+    stall: {
+      open: () => {
+        if (stall.group.visible) return;
+        stall.group.visible = true;
+        for (const sec of stall.sections) sections.set(sec.id, sec);
+        colliders.push(stall.collider);
+      },
+      close: () => {
+        if (!stall.group.visible) return;
+        stall.group.visible = false;
+        for (const sec of stall.sections) sections.delete(sec.id);
+        drop(stall.collider);
+      },
+    },
+  };
+
   return {
     root, sections, lights, porchLight, door: { pivot: doorPivot, bellPivot, sign, signMat, signTexOpen, signTexClosed },
     clock: { hour: hourHand, minute: minHand, pos: clock.position.clone() },
-    register, ledger, radio, board, pins, crates, stations: { candle: candleSpot, lamp: lampSpot }, lampLocked,
+    register, ledger, radio, board, pins, crates, stations: { candle: candleSpot, lamp: lampSpot, lens: lensSpot, glass: glassSpot }, lampLocked,
+    studio, expansions, studioLight: new THREE.Vector3(3.2, 2.0, -6.0), shelfCtx, roofMat,
     anchors: {
       porchDrop: [new THREE.Vector3(4.3, 0.01, 5.0), new THREE.Vector3(4.6, 0.01, 5.65), new THREE.Vector3(3.8, 0.01, 5.7), new THREE.Vector3(1.8, 0.01, 5.0), new THREE.Vector3(1.6, 0.01, 5.65), new THREE.Vector3(4.75, 0.01, 4.55)],
       counterCustomer: new THREE.Vector3(2.82, 0, 0.05),
@@ -619,6 +718,125 @@ export async function buildShop(scene, ctx) {
       catSpots: [new THREE.Vector3(0.6, 0, 1.0), new THREE.Vector3(-3.0, 0, -0.2), new THREE.Vector3(-3.8, 0, -2.7), new THREE.Vector3(0.6, 0, 2.6), new THREE.Vector3(4.45, 0, -1.6), new THREE.Vector3(-0.2, 0, -2.6)],
     },
   };
+}
+
+// ---------- reusable fixtures (also used for decor placed by the player) ----------
+let shelfWoodMat = null;
+const shelfWood = () => (shelfWoodMat ||= toon('#ffffff', { map: textures.planks([1, 1]) }));
+const tagMaterial = () => new THREE.MeshToonMaterial({ map: textures.label('—', { size: 40, w: 160, h: 72 }), gradientMap: m('#fff').gradientMap });
+
+function worldBox(x, z, rotY, hw, hd) {
+  const c = Math.abs(Math.cos(rotY)), s = Math.abs(Math.sin(rotY));
+  const ex = hw * c + hd * s, ez = hw * s + hd * c;
+  return { minX: x - ex, maxX: x + ex, minZ: z - ez, maxZ: z + ez };
+}
+
+/** A 1.6 m shelf unit with 3 levels × 2 sections. Front faces local +z. */
+export function makeShelfUnit({ hit }, id, x, z, rotY, { levels = [0.28, 0.78, 1.28], height = 1.85, backed = true } = {}) {
+  const W = 1.6, D = 0.44;
+  const unit = new THREE.Group();
+  unit.position.set(x, 0, z);
+  unit.rotation.y = rotY;
+  const wood = shelfWood();
+  const side = (sx) => { const sm = new THREE.Mesh(new RoundedBoxGeometry(0.06, height, D, 2, 0.012), wood); sm.position.set(sx, height / 2, 0); unit.add(sm); };
+  side(-W / 2); side(W / 2);
+  if (backed) { const back = new THREE.Mesh(new THREE.BoxGeometry(W, height, 0.03), m('#a8754c')); back.position.set(0, height / 2, -D / 2 + 0.015); unit.add(back); }
+  const topB = new THREE.Mesh(new RoundedBoxGeometry(W + 0.08, 0.05, D + 0.04, 2, 0.012), wood);
+  topB.position.set(0, height, 0);
+  unit.add(topB);
+  const plinth = new THREE.Mesh(new THREE.BoxGeometry(W, 0.1, D - 0.04), m('#6e4a36'));
+  plinth.position.y = 0.05;
+  unit.add(plinth);
+  const sections = [];
+  unit.updateMatrixWorld(true);
+  levels.forEach((y, li) => {
+    const board = new THREE.Mesh(new RoundedBoxGeometry(W - 0.06, 0.035, D - 0.02, 2, 0.01), wood);
+    board.position.set(0, y, 0);
+    unit.add(board);
+    const lip = new THREE.Mesh(new THREE.BoxGeometry(W - 0.06, 0.05, 0.02), m('#8a5a3b'));
+    lip.position.set(0, y - 0.005, D / 2 - 0.01);
+    unit.add(lip);
+    for (let si = 0; si < 2; si++) {
+      const sid = `${id}-${li}${si}`;
+      const cx = -W / 4 + (si * W) / 2;
+      const holder = new THREE.Group();
+      holder.position.set(cx, y + 0.018, 0.0);
+      holder.userData.dynamic = true;
+      unit.add(holder);
+      const tagMat = tagMaterial();
+      const tag = new THREE.Mesh(new THREE.PlaneGeometry(0.13, 0.058), tagMat);
+      tag.position.set(cx, y - 0.003, D / 2 + 0.002);
+      tag.userData.dynamic = true;
+      unit.add(tag);
+      unit.add(hit(new THREE.BoxGeometry(W / 2 - 0.04, 0.42, D), new THREE.Vector3(cx, y + 0.21, 0), { type: 'section', id: sid }));
+      unit.add(hit(new THREE.BoxGeometry(0.16, 0.08, 0.06), new THREE.Vector3(cx, y - 0.003, D / 2 + 0.01), { type: 'tag', id: sid }));
+      const front = new THREE.Vector3(cx, 0, D / 2 + 0.55).applyMatrix4(unit.matrixWorld);
+      front.y = 0;
+      sections.push({ id: sid, holder, tag, tagMat, width: W / 2 - 0.08, depth: D - 0.08, maxH: li < levels.length - 1 ? levels[li + 1] - y - 0.06 : height - y - 0.06, customerSpot: front, unit, level: li, items: [] });
+    }
+  });
+  return { group: unit, sections, collider: worldBox(x, z, rotY, W / 2 + 0.05, D / 2 + 0.03) };
+}
+
+/** A display table with 2 sections. Customers stand on the local +z side. */
+export function makeTable({ hit }, id, x, z, rotY, { width = 1.8, cloth = true, stall = false } = {}) {
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
+  g.rotation.y = rotY;
+  const wood = shelfWood();
+  const top = new THREE.Mesh(new RoundedBoxGeometry(width, 0.07, 0.75, 2, 0.02), wood);
+  top.position.y = 0.74;
+  g.add(top);
+  for (const [lx, lz] of [[-width / 2 + 0.1, -0.3], [width / 2 - 0.1, -0.3], [-width / 2 + 0.1, 0.3], [width / 2 - 0.1, 0.3]]) {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.72, 0.07), m('#6e4a36'));
+    leg.position.set(lx, 0.36, lz);
+    g.add(leg);
+  }
+  if (cloth) {
+    const c = new THREE.Mesh(new THREE.BoxGeometry(width + 0.04, 0.01, 0.4), m('#b85a4c'));
+    c.position.set(0, 0.78, 0);
+    g.add(c);
+  }
+  if (stall) {
+    // striped market awning on four posts
+    for (const [px, pz] of [[-width / 2, -0.38], [width / 2, -0.38], [-width / 2, 0.42], [width / 2, 0.42]]) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.2, 0.08), m('#8a5a3b'));
+      post.position.set(px, 1.1, pz);
+      g.add(post);
+    }
+    const stripes = 8;
+    for (let k = 0; k < stripes; k++) {
+      const sw = (width + 0.3) / stripes;
+      const strip = new THREE.Mesh(new THREE.BoxGeometry(sw, 0.04, 1.2), m(k % 2 ? '#f6ecd8' : '#b85a4c'));
+      strip.position.set(-width / 2 - 0.15 + sw * (k + 0.5), 2.2, 0.12);
+      strip.rotation.x = -0.28;
+      g.add(strip);
+      const flap = new THREE.Mesh(new THREE.BoxGeometry(sw, 0.16, 0.03), m(k % 2 ? '#f6ecd8' : '#b85a4c'));
+      flap.position.set(strip.position.x, 1.98, 0.72);
+      g.add(flap);
+    }
+  }
+  g.updateMatrixWorld(true);
+  const sections = [];
+  for (let si = 0; si < 2; si++) {
+    const sid = `${id}-0${si}`;
+    const cx = -width / 4 + (si * width) / 2;
+    const holder = new THREE.Group();
+    holder.position.set(cx, 0.78, 0);
+    holder.userData.dynamic = true;
+    g.add(holder);
+    const tagMat = tagMaterial();
+    const tag = new THREE.Mesh(new THREE.PlaneGeometry(0.13, 0.058), tagMat);
+    tag.position.set(cx, 0.74, 0.38);
+    tag.userData.dynamic = true;
+    g.add(tag);
+    g.add(hit(new THREE.BoxGeometry(width / 2 - 0.08, 0.5, 0.7), new THREE.Vector3(cx, 1.02, 0), { type: 'section', id: sid }));
+    g.add(hit(new THREE.BoxGeometry(0.16, 0.08, 0.06), new THREE.Vector3(cx, 0.74, 0.39), { type: 'tag', id: sid }));
+    const front = new THREE.Vector3(cx, 0, 0.9).applyMatrix4(g.matrixWorld);
+    front.y = 0;
+    sections.push({ id: sid, holder, tag, tagMat, width: width / 2 - 0.12, depth: 0.6, maxH: stall ? 1.0 : 0.8, customerSpot: front, unit: g, level: 0, items: [] });
+  }
+  return { group: g, sections, collider: worldBox(x, z, rotY, width / 2 + 0.05, 0.42) };
 }
 
 function buildRegister() {

@@ -2,9 +2,11 @@
 // system shares (colliders, interactables, sections, windows).
 
 import * as THREE from 'three';
-import { LAYER_NO_INK } from './render.js';
+import { LAYER_NO_INK, materialsNamed, textures } from './render.js';
+import { SEASONS } from './config.js';
 import { buildShop } from './shop.js';
 import { buildVillage, WINDOW_ON, WINDOW_OFF } from './village.js';
+import { bakeStatic } from './bake.js';
 import { damp, lerp, smooth } from './tween.js';
 
 const SKY_KEYS = [
@@ -18,6 +20,7 @@ const SKY_KEYS = [
   { h: 30.0, top: '#6f9ccc', hor: '#f6c2a0', fog: '#c9a9a0', hemiS: '#e0c8c0', hemiG: '#6a5a4a', hemi: 0.95, sun: '#ffd2b0', sunI: 1.1, inside: 0.6, stars: 0, win: 0.3 },
 ];
 const col = (h) => new THREE.Color(h);
+const POST_GLOW = new THREE.Color('#ffcf8a');
 const KEYS = SKY_KEYS.map((k) => ({ ...k, top: col(k.top), hor: col(k.hor), fog: col(k.fog), hemiS: col(k.hemiS), hemiG: col(k.hemiG), sun: col(k.sun) }));
 
 export class World {
@@ -71,7 +74,7 @@ export class World {
       vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
       fragmentShader: 'uniform vec3 uTop; uniform vec3 uHor; varying vec3 vP; void main(){ float h = clamp(vP.y * 1.6 + 0.08, 0.0, 1.0); vec3 c = mix(uHor, uTop, pow(h, 0.7)); gl_FragColor = vec4(c, 1.0); }',
     });
-    const sky = new THREE.Mesh(new THREE.SphereGeometry(180, 32, 16), this.skyMat);
+    const sky = new THREE.Mesh(new THREE.SphereGeometry(110, 32, 16), this.skyMat);
     sky.layers.set(LAYER_NO_INK);
     sky.renderOrder = -10;
     s.add(sky);
@@ -83,15 +86,15 @@ export class World {
     for (let i = 0; i < 900; i++) {
       const u = Math.random(), v = Math.random() * 0.45 + 0.08;
       const th = u * Math.PI * 2, ph = Math.acos(1 - v);
-      sp.push(Math.sin(ph) * Math.cos(th) * 160, Math.cos(ph) * 160, Math.sin(ph) * Math.sin(th) * 160);
+      sp.push(Math.sin(ph) * Math.cos(th) * 100, Math.cos(ph) * 100, Math.sin(ph) * Math.sin(th) * 100);
     }
     starGeo.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
     this.starMat = new THREE.PointsMaterial({ color: '#fff3dc', size: 1.4, sizeAttenuation: false, transparent: true, opacity: 0, fog: false, depthWrite: false });
     this.stars = new THREE.Points(starGeo, this.starMat);
     this.stars.layers.set(LAYER_NO_INK);
     s.add(this.stars);
-    this.moon = new THREE.Mesh(new THREE.CircleGeometry(5, 32), new THREE.MeshBasicMaterial({ color: new THREE.Color('#fff4dc').multiplyScalar(1.6), fog: false, transparent: true }));
-    this.moon.position.set(-50, 70, 120);
+    this.moon = new THREE.Mesh(new THREE.CircleGeometry(3.2, 32), new THREE.MeshBasicMaterial({ color: new THREE.Color('#fff4dc').multiplyScalar(1.6), fog: false, transparent: true }));
+    this.moon.position.set(-30, 44, 75);
     this.moon.lookAt(0, 0, 0);
     this.moon.layers.set(LAYER_NO_INK);
     s.add(this.moon);
@@ -101,6 +104,8 @@ export class World {
     this.shop = await buildShop(s, ctx);
     onProgress?.(0.45);
     this.village = await buildVillage(s, this.colliders);
+    // merge everything that never moves: hundreds of draw calls become a few dozen
+    this.bakeStats = [bakeStatic(this.shop.root), bakeStatic(this.village.root), bakeStatic(this.shop.studio)];
     onProgress?.(0.9);
     // hitboxes are added to the scene through their parents; keep a flat list for raycasting
     this.windows = this.village.windows;
@@ -131,6 +136,19 @@ export class World {
     this.fireflies = new THREE.Points(ffGeo, new THREE.PointsMaterial({ color: new THREE.Color('#e9ff9a').multiplyScalar(2.2), size: 0.09, transparent: true, opacity: 0, depthWrite: false }));
     this.fireflies.layers.set(LAYER_NO_INK);
     s.add(this.fireflies);
+
+    // seasonal flakes: petals, falling leaves or snow
+    const fg = new THREE.BufferGeometry();
+    this.flakeN = 900;
+    const fpos = new Float32Array(this.flakeN * 3);
+    for (let i = 0; i < this.flakeN; i++) { fpos[i * 3] = -16 + Math.random() * 32; fpos[i * 3 + 1] = Math.random() * 12; fpos[i * 3 + 2] = -10 + Math.random() * 30; }
+    fg.setAttribute('position', new THREE.BufferAttribute(fpos, 3));
+    this.flakeMat = new THREE.PointsMaterial({ color: '#ffffff', size: 0.07, transparent: true, opacity: 0, depthWrite: false });
+    this.flakes = new THREE.Points(fg, this.flakeMat);
+    this.flakes.layers.set(LAYER_NO_INK);
+    this.flakes.frustumCulled = false;
+    s.add(this.flakes);
+    this.flakeBase = 0;
 
     this.applySky(17);
     onProgress?.(1);
@@ -180,7 +198,7 @@ export class World {
     this.t += dt;
     this.hour = hour;
     this.weatherK.rain = damp(this.weatherK.rain, this.weather === 'rain' ? 1 : 0, 0.6, dt);
-    this.weatherK.fog = damp(this.weatherK.fog, this.weather === 'fog' ? 1 : 0, 0.6, dt);
+    this.weatherK.fog = damp(this.weatherK.fog, this.weather === 'fog' ? 1 : this.weather === 'snow' ? 0.45 : 0, 0.6, dt);
     this.applySky(hour);
 
     // interior lights follow the mood, with a tiny candle flicker
@@ -198,7 +216,7 @@ export class World {
       const k = pane.userData.k + g * 0.6;
       pane.material.color.copy(WINDOW_OFF).lerp(WINDOW_ON, Math.min(1.6, k));
     }
-    for (const b of this.village.posts) b.material.color.setScalar(0).add(new THREE.Color('#ffcf8a').multiplyScalar(0.6 + 2.0 * this.winK));
+    for (const b of this.village.posts) b.material.color.copy(POST_GLOW).multiplyScalar(0.6 + 2.0 * this.winK);
 
     // rain
     const rk = this.weatherK.rain;
@@ -215,10 +233,35 @@ export class World {
       pos.needsUpdate = true;
     }
 
+    // seasonal flakes; heavy snow when it's snowing
+    const snowing = this.weather === 'snow';
+    const fk = Math.max(this.flakeBase * 0.6, snowing ? 1 : 0);
+    this.flakeMat.opacity = damp(this.flakeMat.opacity, fk * 0.85, 1, dt);
+    this.flakes.visible = this.flakeMat.opacity > 0.02;
+    if (this.flakes.visible) {
+      const pos = this.flakes.geometry.attributes.position;
+      const fall = this.seasonId === 'winter' || snowing ? 1.0 : 0.55;
+      const n = Math.floor(this.flakeN * Math.min(1, fk + 0.15));
+      this.flakes.geometry.setDrawRange(0, n);
+      for (let i = 0; i < n; i++) {
+        let y = pos.getY(i) - dt * fall * (0.7 + (i % 7) * 0.08);
+        if (y < 0) y += 12;
+        pos.setY(i, y);
+        pos.setX(i, pos.getX(i) + Math.sin(this.t * 0.8 + i) * dt * 0.25);
+      }
+      pos.needsUpdate = true;
+    }
+    this.updateFestival(dt);
+    // the workshop light follows you into the back studio
+    if (this.shop.lights[2]) {
+      const inStudio = playerPos.z < -4.1 && playerPos.x > 1.3 && playerPos.x < 5.1;
+      this.shop.lights[2].position.copy(inStudio ? this.shop.studioLight : (this.workshopLightPos ||= this.shop.lights[2].position.clone()));
+    }
+
     // fireflies (clear nights only)
-    const fk = this.nightK * (1 - Math.max(this.weatherK.rain, this.weatherK.fog * 0.6));
-    this.fireflies.material.opacity = fk * (0.6 + 0.4 * Math.sin(this.t * 2));
-    if (fk > 0.01) {
+    const ffk = this.nightK * (1 - Math.max(this.weatherK.rain, this.weatherK.fog * 0.6)) * (this.seasonId === 'winter' ? 0 : 1);
+    this.fireflies.material.opacity = ffk * (0.6 + 0.4 * Math.sin(this.t * 2));
+    if (ffk > 0.01) {
       const pos = this.fireflies.geometry.attributes.position;
       for (let i = 0; i < this.ffSeed.length; i++) {
         const s = this.ffSeed[i];
@@ -236,8 +279,101 @@ export class World {
     const hh = hour % 12;
     this.shop.clock.hour.rotation.x = -(hh / 12) * Math.PI * 2;
     this.shop.clock.minute.rotation.x = -((hour % 1)) * Math.PI * 2;
-    void playerPos;
+    if (this.festival) for (const b of this.village.posts) b.material.color.multiplyScalar(1.15);
   }
 
   ringBell() { this.bellK = 1; }
+
+  // ---------- seasons ----------
+  setSeason(index) {
+    if (this.seasonIndex === index) return;
+    this.seasonIndex = index;
+    const id = SEASONS[index].id;
+    const P = {
+      spring: { leafsGreen: '#76b464', leafsDark: '#3a6f58', grass: '#6aa052', plant: '#6aa860', ground: '#ffffff', snow: 0, flake: '#f6b8c8', flakeN: 0.5 },
+      summer: { leafsGreen: '#4f8a55', leafsDark: '#2f5f52', grass: '#5f8f52', plant: '#5f9a62', ground: '#f4ffe8', snow: 0, flake: '#e9ff9a', flakeN: 0 },
+      autumn: { leafsGreen: '#d27a38', leafsDark: '#3f5f4a', grass: '#9a8a4a', plant: '#b88a3a', ground: '#ead6a4', snow: 0, flake: '#e08a3c', flakeN: 0.8 },
+      winter: { leafsGreen: '#c4ccd0', leafsDark: '#8aa39c', grass: '#e6edf2', plant: '#9ab0a0', ground: '#ffffff', snow: 1, flake: '#ffffff', flakeN: 0.6 },
+    }[id];
+    for (const name of ['leafsGreen', 'leafsDark', 'grass', 'plant']) for (const m of materialsNamed(name)) m.color.set(P[name]);
+    const v = this.village;
+    this.snowTex ||= textures.snow([60, 60]);
+    v.groundMat.map = P.snow ? this.snowTex : v.grassTex;
+    v.groundMat.color.set(P.ground);
+    v.groundMat.needsUpdate = true;
+    const roofs = [...v.roofMats, this.shop.roofMat];
+    for (const m of roofs) {
+      m.userData.base ||= m.color.clone();
+      m.color.copy(m.userData.base).lerp(new THREE.Color('#ffffff'), P.snow ? 0.6 : 0);
+    }
+    this.flakeMat.color.set(P.flake);
+    this.flakeBase = P.flakeN;
+    this.seasonId = id;
+  }
+
+  // ---------- the lantern festival ----------
+  setFestival(on) {
+    this.festival = on;
+    if (on && !this.festivalRoot) this.buildFestival();
+    if (this.festivalRoot) this.festivalRoot.visible = on || this.festivalDone;
+    if (this.skyLanterns) this.skyLanterns.visible = on;
+  }
+
+  buildFestival() {
+    const root = new THREE.Group();
+    const colors = ['#ffb35c', '#e07a7c', '#7fd6c6', '#ffd89a', '#b5a3d8'];
+    const bulbGeo = new THREE.SphereGeometry(0.07, 8, 6);
+    const mats = colors.map((c) => new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(2.2) }));
+    const wire = new THREE.LineBasicMaterial({ color: '#3b2a20' });
+    const garland = (a, b, sag = 0.8) => {
+      const pts = [];
+      for (let i = 0; i <= 16; i++) {
+        const t = i / 16;
+        const p = new THREE.Vector3().lerpVectors(a, b, t);
+        p.y -= Math.sin(t * Math.PI) * sag;
+        pts.push(p);
+      }
+      root.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), wire));
+      pts.forEach((p, i) => { if (i % 2) { const bulb = new THREE.Mesh(bulbGeo, mats[i % mats.length]); bulb.position.copy(p).y -= 0.06; bulb.layers.set(LAYER_NO_INK); root.add(bulb); } });
+    };
+    const posts = [-22, -8, 4.6, 12, 24];
+    for (let i = 0; i < posts.length - 1; i++) garland(new THREE.Vector3(posts[i], 2.6, 11), new THREE.Vector3(posts[i + 1], 2.6, 11), 0.9);
+    garland(new THREE.Vector3(1.05, 2.6, 6.25), new THREE.Vector3(-6.8, 1.0, 10.4), 0.5);
+    garland(new THREE.Vector3(5.15, 2.6, 6.25), new THREE.Vector3(6.8, 1.0, 10.4), 0.4);
+    for (const [hx, hz] of [[-9, 17], [7.5, 17], [-2, 19.5], [14, 21]]) garland(new THREE.Vector3(hx, 3.0, hz - 2), new THREE.Vector3(hx > 0 ? 4.6 : -8, 2.6, 11), 0.7);
+    this.festivalRoot = root;
+    this.scene.add(root);
+    // paper sky lanterns drifting up over the village
+    const n = 70;
+    const geo = new THREE.BoxGeometry(0.35, 0.45, 0.35);
+    const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffb766').multiplyScalar(1.9) });
+    const im = new THREE.InstancedMesh(geo, mat, n);
+    im.layers.set(LAYER_NO_INK);
+    im.frustumCulled = false;
+    this.lanternSeeds = Array.from({ length: n }, () => ({ x: -26 + Math.random() * 52, z: 9 + Math.random() * 22, y: Math.random() * 40, s: 0.4 + Math.random() * 0.5, w: Math.random() * 6 }));
+    this.skyLanterns = im;
+    this.scene.add(im);
+  }
+
+  updateFestival(dt) {
+    if (!this.festival || !this.skyLanterns) return;
+    const m = new THREE.Matrix4();
+    this.lanternSeeds.forEach((l, i) => {
+      l.y += dt * l.s;
+      if (l.y > 42) l.y = 0.5;
+      m.makeTranslation(l.x + Math.sin(this.t * 0.3 + l.w) * 1.2, 1.5 + l.y, l.z + Math.cos(this.t * 0.25 + l.w));
+      this.skyLanterns.setMatrixAt(i, m);
+    });
+    this.skyLanterns.instanceMatrix.needsUpdate = true;
+  }
+
+  /** Quality tiers decide how many real lights we can afford. */
+  setLightBudget(n) {
+    const L = this.shop.lights;
+    L.forEach((l, i) => { l.visible = i < Math.min(n, L.length); });
+    this.shop.porchLight.visible = n >= 3;
+    // the brightest light stretches further when it's carrying the room alone
+    L[0].distance = n <= 2 ? 14 : 11;
+    this.ambient.intensity = n <= 2 ? 0.26 : n === 3 ? 0.18 : 0.12;
+  }
 }

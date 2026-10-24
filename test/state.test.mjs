@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import {
   newGame, parseKey, candleKey, lampKey, marketPrice, keyMatches, buyChance, levelFor, orderBox,
   recordSale, startShift, endShift, totalWindows, migrate, addWish, fulfilWishes, sectionCapacity,
-  buyLicence, canBuyLicence, productName, save, load,
+  buyLicence, canBuyLicence, productName, save, load, lensKey, glassKey, canBuyExpansion, buyExpansion,
+  buyDecor, placeDecor, storeDecor, coziness, cozyBonus, hire, canHire, dismiss, wages, seasonIndex, seasonFor,
 } from '../js/game/state.js';
-import { HOUSES, REP_WINDOW_STEPS, STOCK } from '../js/game/config.js';
+import { HOUSES, REP_WINDOW_STEPS, STOCK, NIGHTS_PER_SEASON } from '../js/game/config.js';
 
 const results = [];
 const test = (name, fn) => {
@@ -127,6 +128,71 @@ test('save + load survive without localStorage and with it', () => {
   assert.equal(save(s), true);
   assert.equal(load(2).coins, 42);
   delete globalThis.localStorage;
+});
+test('lens and glass products price, name and parse', () => {
+  const l = lensKey('reading', 2), g = glassKey('moon', 'amber', 'sky', 3);
+  assert.equal(parseKey(l).kind, 'lens');
+  assert.equal(parseKey(g).kind, 'glass');
+  assert.ok(marketPrice(lensKey('reading', 3)) >= marketPrice(lensKey('reading', 1)));
+  assert.ok(marketPrice(g) > 0 && productName(g).length > 3 && productName(l).length > 3);
+  assert.ok(keyMatches(g, 'glass') && keyMatches(l, 'lens'));
+});
+test('studio expansion gates the lens and glass licences', () => {
+  const s = newGame(0);
+  s.xp = 1e6; s.coins = 1000;
+  assert.equal(canBuyLicence(s, 'lens'), false);
+  assert.equal(canBuyExpansion(s, 'studio'), true);
+  assert.equal(buyExpansion(s, 'studio'), true);
+  assert.equal(buyExpansion(s, 'studio'), false);
+  assert.equal(canBuyLicence(s, 'lens'), true);
+});
+test('decor buy, place, store and coziness', () => {
+  const s = newGame(0);
+  s.xp = 1e6; s.coins = 1000;
+  assert.equal(placeDecor(s, 'plant', 0, 0, 0), null);
+  assert.equal(buyDecor(s, 'plant'), true);
+  const d = placeDecor(s, 'plant', 1.234, -2, 0.5);
+  assert.ok(d && s.decorStore.length === 0 && s.decor.length === 1);
+  assert.ok(coziness(s) > 0 && cozyBonus(s) <= 0.08);
+  assert.equal(storeDecor(s, d.id).type, 'plant');
+  assert.deepEqual(s.decorStore, ['plant']);
+  assert.equal(coziness(s), 0);
+});
+test('staff cost wages at dawn, never below zero coins', () => {
+  const s = newGame(0);
+  assert.equal(canHire(s, 'bramble'), false);
+  s.xp = 1e6;
+  assert.ok(hire(s, 'bramble') && hire(s, 'wren'));
+  assert.equal(hire(s, 'wren'), false);
+  s.coins = 10;
+  startShift(s, () => 0.1);
+  const sum = endShift(s);
+  assert.equal(sum.wages, wages(s));
+  assert.equal(s.coins, 0);
+  dismiss(s, 'wren');
+  assert.deepEqual(s.staff, ['bramble']);
+});
+test('seasons turn every few nights and winter brings snow', () => {
+  assert.equal(seasonIndex(1), 0);
+  assert.equal(seasonIndex(NIGHTS_PER_SEASON + 1), 1);
+  assert.equal(seasonIndex(NIGHTS_PER_SEASON * 4 + 1), 0);
+  const s = newGame(0);
+  s.night = NIGHTS_PER_SEASON * 3 + 2;
+  assert.equal(seasonFor(s.night).id, 'winter');
+  startShift(s, () => 0.6);
+  assert.equal(s.weather, 'snow');
+});
+test('festival: ready → tonight (clear skies) → done with a letter', () => {
+  const s = newGame(0);
+  s.night = 5;
+  s.festival = 'ready';
+  startShift(s, () => 0.9);
+  assert.equal(s.festival, 'tonight');
+  assert.equal(s.weather, 'clear');
+  const sum = endShift(s);
+  assert.ok(sum.festival);
+  assert.equal(s.festival, 'done');
+  assert.ok(s.letters.some((l) => l.id === 'm:festival'));
 });
 
 for (const [name, ok, msg] of results) console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${ok ? '' : ` — ${msg}`}`);

@@ -89,8 +89,27 @@ function applyRecolor(root, map) {
   });
 }
 
-/** Merge a static model's meshes into one InstancedMesh per material for big forests. */
-export async function instanced(path, transforms, { height } = {}) {
+/**
+ * One InstancedMesh per material for big forests. Transforms are split into
+ * spatial chunks so the camera can skip the ones it isn't looking at.
+ */
+export async function instanced(path, transforms, { height, chunk = 0, inkRadius = Infinity } = {}) {
+  if (chunk > 0) {
+    const cells = new Map();
+    for (const t of transforms) {
+      const k = `${Math.floor(t.position.x / chunk)},${Math.floor(t.position.z / chunk)}`;
+      (cells.get(k) || cells.set(k, []).get(k)).push(t);
+    }
+    const group = new THREE.Group();
+    for (const [k, list] of cells) {
+      const [cx, cz] = k.split(',').map((v) => (+v + 0.5) * chunk);
+      const part = await instanced(path, list, { height });
+      // far chunks fade into fog anyway: keep them out of the outline pass
+      if (Math.hypot(cx, cz - 4) > inkRadius) part.traverse((o) => { if (o.isMesh) o.layers.set(1); });
+      group.add(part);
+    }
+    return group;
+  }
   const src = await placeable(path, { height });
   src.updateMatrixWorld(true);
   const group = new THREE.Group();
@@ -105,7 +124,6 @@ export async function instanced(path, transforms, { height } = {}) {
     });
     im.instanceMatrix.needsUpdate = true;
     im.computeBoundingSphere();
-    im.frustumCulled = false;
     group.add(im);
   }
   return group;

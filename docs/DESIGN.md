@@ -194,6 +194,16 @@ and Freesound were not needed for M1.
 - Weather (clear/rain/fog) shipped in M1; seasons, staff, decorating, expansions, lens grinding and
   stained glass stay in M2.
 
+### M2 (shipped)
+- Back Studio (level 3) with the lens grinder and stained-glass table; Porch Stall (level 2).
+- 12 decor pieces with free placement; coziness adds visitors and a small buy-chance bonus (capped at +8%).
+- Two staff instead of a roster: Bramble (restocker) and Wren (cashier), paid at dawn.
+- Seasons every 7 nights recolour foliage, grass and roofs; winter swaps rain for snow.
+- Lantern Festival: lighting every window makes the next night clear, busy (every regular visits) and full of sky lanterns.
+- Six regulars rather than twelve.
+- Tutorial is a floor path + marker + one-line card rather than bottom-corner text; the HUD is wood, brass and paper.
+- Performance: static batching, chunked culled instancing, and auto quality tiers (render scale → outline res → bloom → lights).
+
 ## 16. Research references
 
 - Cozy design: Project Horseshoe definition (safety, abundance, softness); no fail states,

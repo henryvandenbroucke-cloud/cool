@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 
 const CELL = 0.2;
-const BOUNDS = { minX: -7, maxX: 7.4, minZ: -4, maxZ: 12 };
+const BOUNDS = { minX: -7, maxX: 7.4, minZ: -8, maxZ: 12 };
 
 export class NavGrid {
   constructor(colliders, { radius = 0.3, extraBlocked = [] } = {}) {
@@ -20,8 +20,8 @@ export class NavGrid {
         for (const c of all) {
           if (x > c.minX - radius && x < c.maxX + radius && z > c.minZ - radius && z < c.maxZ + radius) { b = true; break; }
         }
-        // the room interior edge (walls are colliders, but keep a margin)
-        if (z < -3.7) b = true;
+        // behind the shop is forest, except the studio annex
+        if (z < -3.7 && !(x > 1.4 && x < 5.0 && z > -7.8)) b = true;
         this.blocked[j * this.w + i] = b ? 1 : 0;
       }
     }

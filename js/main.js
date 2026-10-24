@@ -25,7 +25,7 @@ async function boot() {
     return;
   }
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(mobile ? 72 : 66, innerWidth / innerHeight, 0.05, 400);
+  const camera = new THREE.PerspectiveCamera(mobile ? 72 : 66, innerWidth / innerHeight, 0.05, 125);
   camera.layers.enable(1);
   const post = createComposer(renderer, scene, camera, { mobile });
   addEventListener('resize', () => post.resize());
@@ -48,7 +48,9 @@ async function boot() {
     return;
   }
   clearInterval(lineTimer);
-  game.applyState(newGame(0));
+  await game.applyState(newGame(0));
+  post.onChange = (tier, t) => { game.world.setLightBudget(t.lights); game.ui?.setQualityLabel?.(post); };
+  post.setMode(game.settings?.quality || 'auto');
 
   // idle title camera: slowly drift over the village
   let titleT = 0;
@@ -73,7 +75,7 @@ async function boot() {
       b.setAttribute('role', 'button');
       b.innerHTML = sum
         ? `<div><b>Shop ${i + 1} · Night ${sum.night}</b><small>Level ${sum.level} · ${sum.coins.toFixed(2)} coins · ${sum.lit} windows lit</small></div><button class="del" data-del="${i}">Delete</button>`
-        : `<div><b>New shop ${i + 1}</b><small>Start fresh at the edge of the forest</small></div><span aria-hidden="true">→</span>`;
+        : `<div><b>New shop ${i + 1}</b><small>Start fresh at the edge of the forest</small></div><span class="go" aria-hidden="true">→</span>`;
       const go = (e) => { if (e.target.dataset.del) return; begin(i); };
       b.addEventListener('click', go);
       b.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') begin(i); });
@@ -95,11 +97,11 @@ async function boot() {
     $('fade').classList.add('on');
     await new Promise((r) => setTimeout(r, 650));
     $('title').classList.remove('is-open');
-    game.applyState(state);
+    await game.applyState(state);
     game.start();
     playing = true;
     $('fade').classList.remove('on');
-    if (state.tutorial === 0 && state.night === 1) game.ui.toast('Welcome to your little light shop!', '🕯', 4);
+    if (!state.tutorialDone && state.night === 1) game.ui.toast('Welcome to your little light shop! Follow the glowing path.', 'i-candle', 4.5);
   };
 
   game.onQuit = async () => {
@@ -119,7 +121,9 @@ async function boot() {
 
   const clock = new THREE.Clock();
   const frame = () => {
-    const dt = Math.min(0.05, clock.getDelta());
+    const raw = clock.getDelta();
+    const dt = Math.min(0.05, raw);
+    if (!document.hidden) post.measure(raw);
     if (playing) game.update(dt);
     else titleCam(dt);
     post.render(dt);

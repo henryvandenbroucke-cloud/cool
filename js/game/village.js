@@ -35,7 +35,10 @@ export function uvBox(w, h, d, density = 1) {
 }
 
 const matCache = {};
-function m(hex, opts) { const k = hex + (opts ? JSON.stringify(opts) : ''); return (matCache[k] ||= toon(hex, opts)); }
+function m(hex, opts) {
+  const k = hex + (opts ? JSON.stringify({ ...opts, map: opts.map?.uuid }) : '');
+  return (matCache[k] ||= toon(hex, opts));
+}
 let shingleTex, plasterTex, pathTex, grassTex;
 
 function cottage(r, i) {
@@ -43,7 +46,7 @@ function cottage(r, i) {
   const w = 4.2 + r() * 1.4;
   const d = 3.4 + r() * 1.0;
   const h = 2.4 + r() * 0.5;
-  const wallMat = toon(WALLS[i % WALLS.length], { map: plasterTex });
+  const wallMat = m(WALLS[i % WALLS.length], { map: plasterTex });
   const body = new THREE.Mesh(uvBox(w, h, d, 0.5), wallMat);
   body.position.y = h / 2;
   g.add(body);
@@ -65,7 +68,7 @@ function cottage(r, i) {
   const over = 0.35;
   const slope = Math.hypot(d / 2 + over, roofH);
   const ang = Math.atan2(roofH, d / 2 + over);
-  const roofMat = toon(ROOFS[i % ROOFS.length], { map: shingleTex });
+  const roofMat = m(ROOFS[i % ROOFS.length], { map: shingleTex });
   for (const s of [-1, 1]) {
     const p = new THREE.Mesh(uvBox(w + 0.6, 0.12, slope, 0.6), roofMat);
     p.position.set(0, h + roofH / 2 - 0.02, s * (d / 4 + over / 2 - 0.02));
@@ -157,7 +160,8 @@ export async function buildVillage(scene, colliders) {
   scene.add(root);
 
   // ground
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(240, 240), toon('#ffffff', { map: grassTex }));
+  const groundMat = toon('#ffffff', { map: grassTex });
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(240, 240), groundMat);
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.01;
   root.add(ground);
@@ -223,10 +227,11 @@ export async function buildVillage(scene, colliders) {
   }
 
   // forest: dense behind the shop, a looser ring around the village
-  const trees = { 'nature/tree_pineTallA_detailed.glb': [], 'nature/tree_pineTallB_detailed.glb': [], 'nature/tree_pineTallC_detailed.glb': [], 'nature/tree_pineRoundA.glb': [], 'nature/tree_pineRoundC.glb': [], 'nature/tree_pineDefaultA.glb': [], 'nature/tree_oak.glb': [] };
+  const trees = { 'nature/tree_pineTallA_detailed.glb': [], 'nature/tree_pineTallB_detailed.glb': [], 'nature/tree_pineRoundA.glb': [], 'nature/tree_pineDefaultA.glb': [], 'nature/tree_oak.glb': [] };
   const keys = Object.keys(trees);
   const blocked = (x, z) => {
     if (x > -8.5 && x < 9 && z > -6.5 && z < 11) return true;          // shop + yard
+    if (x > 0 && x < 6.5 && z > -9.5 && z < -6) return true;            // back studio
     if (Math.abs(z - 12.5) < 2.6 && Math.abs(x) < 46) return true;     // lane
     if (Math.abs(x - (-13.5 + Math.sin(z * 0.12) * 2.5)) < 2.2) return true; // stream
     for (const [hx, hz] of SPOTS) if (Math.hypot(x - hx, z - hz) < 5.2) return true;
@@ -240,12 +245,12 @@ export async function buildVillage(scene, colliders) {
     q.setFromAxisAngle(up, r() * Math.PI * 2);
     trees[key].push({ position: new THREE.Vector3(x, 0, z), quaternion: q.clone(), scale: new THREE.Vector3(s, s * (0.9 + r() * 0.25), s) });
   };
-  for (let k = 0; k < 420; k++) {
+  for (let k = 0; k < 300; k++) {
     const x = -40 + r() * 80;
     const z = -45 + r() * 38;
     place(x, z, 0.9 + r() * 0.9);
   }
-  for (let k = 0; k < 520; k++) {
+  for (let k = 0; k < 360; k++) {
     const a = r() * Math.PI * 2;
     const rad = 26 + r() * 50;
     place(Math.cos(a) * rad, 10 + Math.sin(a) * rad * 0.9, 0.9 + r() * 1.0);
@@ -255,7 +260,7 @@ export async function buildVillage(scene, colliders) {
   for (const [path, list] of Object.entries(trees)) {
     if (!list.length) continue;
     const isOak = path.includes('oak');
-    root.add(await instanced(path, list, { height: isOak ? 5.5 : 7.5 }));
+    root.add(await instanced(path, list, { height: isOak ? 5.5 : 7.5, chunk: 34, inkRadius: 34 }));
   }
 
   // undergrowth near paths and the shop
@@ -269,9 +274,9 @@ export async function buildVillage(scene, colliders) {
       const s = 0.8 + r() * 0.5;
       list.push({ position: new THREE.Vector3(x, 0, z), quaternion: q.clone(), scale: new THREE.Vector3(s, s, s) });
     }
-    if (list.length) root.add(await instanced(path, list, { height: h }));
+    if (list.length) root.add(await instanced(path, list, { height: h, chunk: 30, inkRadius: 24 }));
   };
-  await scatter('nature/grass_large.glb', 260, [-30, 30, -8, 32], 0.45);
+  await scatter('nature/grass_large.glb', 170, [-30, 30, -8, 32], 0.45);
   await scatter('nature/plant_bushLarge.glb', 70, [-30, 30, -8, 32], 0.8);
   await scatter('nature/mushroom_redGroup.glb', 40, [-12, 12, -7, 11], 0.28);
   await scatter('nature/mushroom_tanGroup.glb', 30, [-12, 12, -7, 11], 0.26);
@@ -323,9 +328,10 @@ export async function buildVillage(scene, colliders) {
 
   // a bench and log pile in the yard
   const bench = await placeable('holiday/bench.glb', { width: 1.5 });
-  bench.position.set(-4.6, 0, 6.4);
+  bench.position.set(-5.4, 0, 9.4);
+  bench.rotation.y = Math.PI;
   root.add(bench);
-  colliders.push({ minX: -5.4, maxX: -3.8, minZ: 6.05, maxZ: 6.75, outside: true });
+  colliders.push({ minX: -6.2, maxX: -4.6, minZ: 9.05, maxZ: 9.75, outside: true });
   const logs = await placeable('nature/log_stack.glb', { width: 1.2 });
   logs.position.set(5.6, 0, 5.4);
   logs.rotation.y = 0.3;
@@ -335,7 +341,8 @@ export async function buildVillage(scene, colliders) {
   signpost.position.set(1.6, 0, 10.2);
   root.add(signpost);
 
-  return { root, windows, houses, posts, water, laneZ: 12.5 };
+  const roofMats = ROOFS.map((c) => matCache[c + JSON.stringify({ map: shingleTex.uuid })]).filter(Boolean);
+  return { root, windows, houses, posts, water, laneZ: 12.5, groundMat, grassTex, roofMats };
 }
 
 function ribbon(curve, width, segs) {
