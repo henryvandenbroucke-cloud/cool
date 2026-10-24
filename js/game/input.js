@@ -40,10 +40,13 @@ export class Input {
 
     document.addEventListener('pointerlockchange', () => {
       this.locked = document.pointerLockElement === this.canvas;
+      this.lockedAt = performance.now();
       this.emit('lock', this.locked);
     });
     this.canvas.addEventListener('mousemove', (e) => {
       if (!this.locked || !this.enabled) return;
+      // browsers can report one huge bogus jump right after the lock is taken
+      if (performance.now() - this.lockedAt < 120 || Math.abs(e.movementX) > 400 || Math.abs(e.movementY) > 400) return;
       this.look.x += e.movementX * this.sens;
       this.look.y += e.movementY * this.sens;
     });

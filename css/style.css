@@ -379,6 +379,11 @@ h1 .amp { color: var(--amber); }
 .fade.on { opacity: 1; }
 .noscript { position: fixed; inset: 0; display: grid; place-items: center; font-size: 18px; }
 
+@media (max-width: 1180px) {
+  /* not enough room between the clock and the purse: the card drops under the top row */
+  .guide-card { top: calc(max(12px, env(safe-area-inset-top)) + 64px); width: min(470px, calc(100vw - 24px)); }
+  .toasts { top: 178px; }
+}
 @media (max-width: 760px) {
   .guide-card { top: calc(max(12px, env(safe-area-inset-top)) + 62px); width: calc(100vw - 24px); }
   .toasts { top: auto; bottom: 170px; right: 12px; }
