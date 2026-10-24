@@ -11,11 +11,20 @@ window of the village outside, and the goal is a fully lit hamlet.
 No fail states, no punishing timers. Just a warm shop, rain on the windows, a cat
 asleep on the rug and a radio playing.
 
-Built in the browser with three.js. **No build step, no frameworks.**
+Built in the browser with three.js. **No frameworks, and no build step for development** (an optional build packs everything into one double-clickable HTML file).
 
 ---
 
 ## Play
+
+**Easiest — one file, no setup:** build the single-file version and double-click it.
+
+```bash
+npm install
+npm run build        # → dist/Lantern-and-Lens.html (everything embedded, ~21 MB)
+```
+
+**Development:** serve the folder (opening `index.html` straight from disk can't load modules or models).
 
 ```bash
 npm start

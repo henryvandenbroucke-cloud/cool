@@ -1,6 +1,8 @@
 // Audio: real recorded CC0 foley + ambience through Web Audio, with spatial
 // sources, an indoor/outdoor muffle, and a little radio for the music.
 
+import { asset } from './paths.js';
+
 const SFX = {
   door_open: 1, door_close: 1, shop_bell: 1, till_ding: 1,
   step_wood: 5, step_grass: 5, place_wood: 3, place_glass: 3, box_soft: 3, box_drop: 1,
@@ -68,7 +70,7 @@ export class AudioManager {
 
   async loadBuffer(name) {
     try {
-      const res = await fetch(`/assets/audio/${name}.${this.ext}`);
+      const res = await fetch(asset(`/assets/audio/${name}.${this.ext}`));
       const arr = await res.arrayBuffer();
       const buf = await new Promise((ok, bad) => this.ctx.decodeAudioData(arr, ok, bad));
       this.buffers.set(name, buf);
@@ -201,7 +203,7 @@ export class AudioManager {
         this.radio.node.connect(this.radio.filter).connect(this.bus.music);
       } catch { /* fall back to element volume */ }
     }
-    this.radio.el.src = `/assets/music/${track.id}.m4a`;
+    this.radio.el.src = asset(`/assets/music/${track.id}.m4a`);
     this.radio.on = true;
     this.radio.el.play().catch(() => {});
     return track;

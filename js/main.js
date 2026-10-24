@@ -33,6 +33,7 @@ async function boot() {
 
   const game = new Game({ renderer, post, scene, camera, input, state: newGame(0) });
   window.__game = game; // handy for debugging in the console
+  window.__audio = audio;
   const fill = $('loading-fill');
   const text = $('loading-text');
   const lines = ['Lighting the lamps…', 'Sweeping the porch…', 'Waking the cat…', 'Planting pines…', 'Pouring the first candle…'];

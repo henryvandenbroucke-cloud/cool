@@ -94,6 +94,11 @@
   <div id="fade" class="fade"></div>
 
   <noscript><p class="noscript">Lantern &amp; Lens needs JavaScript and WebGL.</p></noscript>
+  <script>/* file-protocol notice */
+    if (location.protocol === 'file:') {
+      document.body.innerHTML = '<div style="position:fixed;inset:0;display:grid;place-items:center;padding:24px;background:#16222e;color:#fdf3e0;font:17px/1.6 system-ui,sans-serif;text-align:center"><div style="max-width:520px"><h1 style="margin:0 0 12px;font-size:34px">Lantern &amp; Lens</h1><p>Browsers can\'t load the game\'s models and sounds when this development page is opened as a file.</p><p>Double-click <b>Lantern-and-Lens.html</b> instead (the single-file build), or run <code>npm start</code> and open <b>http://localhost:4173</b>.</p></div></div>';
+    }
+  </script>
   <script type="module" src="/js/main.js"></script>
 </body>
 </html>

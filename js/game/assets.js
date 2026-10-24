@@ -2,10 +2,13 @@
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { asset } from './paths.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { toToon, LAYER_NO_INK } from './render.js';
 
-const loader = new GLTFLoader();
+const manager = new THREE.LoadingManager();
+manager.setURLModifier(asset);
+const loader = new GLTFLoader(manager);
 const cache = new Map();
 
 export const MODEL_ROOT = '/assets/models/';
