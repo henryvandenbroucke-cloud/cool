@@ -512,6 +512,9 @@ export class Crafting {
     const buttons = order.map((i) => {
       const b = document.createElement('button');
       b.dataset.i = i;
+      // a faint tint shows the pattern before it is laid
+      const hint = (P.grid[Math.floor(i / 5)][i % 5] === '1' ? GLASS_COLORS[c1] : GLASS_COLORS[c2]).hex;
+      b.style.background = `color-mix(in srgb, ${hint} 28%, #2a1c14)`;
       grid.appendChild(b);
       return b;
     });

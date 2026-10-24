@@ -69,7 +69,7 @@ export class UI {
     this.el.dialFace.classList.toggle('day', prep);
     const w = prep ? 'clear' : s.weather;
     if (w !== this.lastWeather) {
-      this.el.weather.innerHTML = ico(prep ? 'i-sun' : WEATHERS[w]?.icon || 'i-clear');
+      this.el.weather.innerHTML = ico(prep ? 'i-sun' : w === 'clear' ? 'i-moon' : WEATHERS[w]?.icon || 'i-moon');
       this.el.weather.title = prep ? 'Morning' : WEATHERS[w]?.name || '';
       this.lastWeather = w;
     }
@@ -150,6 +150,7 @@ export class UI {
   // ---------- panels ----------
   openPanel(title, html, { wide = false, onClose, icon = '', cls = '' } = {}) {
     this.panelOpen = true;
+    document.body.classList.add('panel-open');
     this.input.enabled = false;
     this.input.exitLock();
     this.el.title.textContent = title;
@@ -167,6 +168,7 @@ export class UI {
   closePanel() {
     if (!this.panelOpen) return;
     this.panelOpen = false;
+    document.body.classList.remove('panel-open');
     this.el.wrap.hidden = true;
     this.input.enabled = true;
     const cb = this.panelClose;

@@ -128,7 +128,15 @@ export class Decor {
     const D = DECOR[type];
     const tmpId = '__ghost';
     const built = await this.makeMesh(type, 0, 0, 0, tmpId);
-    built.root.traverse((o) => { if (o.isMesh) o.raycast = () => {}; });
+    // the preview is see-through so it never blocks the view
+    built.root.traverse((o) => {
+      if (!o.isMesh) return;
+      o.raycast = () => {};
+      if (o.layers.mask === 4) return;
+      o.material = (Array.isArray(o.material) ? o.material : [o.material]).map((m) => Object.assign(m.clone(), { transparent: true, opacity: 0.5, depthWrite: false }));
+      if (o.material.length === 1) o.material = o.material[0];
+      o.layers.set(LAYER_NO_INK);
+    });
     this.game.scene.add(built.root);
     this.placing = { type, built, rot: this.lastRot || 0, valid: false, x: 0, z: 0 };
     this.ring.scale.setScalar(D.r || 0.4);
@@ -176,7 +184,9 @@ export class Decor {
     if (!this.ray.ray.intersectPlane(this.plane, hitPt)) return;
     const from = this.game.player.pos;
     const d = Math.hypot(hitPt.x - from.x, hitPt.z - from.z);
+    const f = this.game.player.forward();
     if (d > 4) hitPt.set(from.x + ((hitPt.x - from.x) / d) * 4, 0, from.z + ((hitPt.z - from.z) / d) * 4);
+    else if (d < 1.3) { const fl = Math.hypot(f.x, f.z) || 1; hitPt.set(from.x + (f.x / fl) * 1.3, 0, from.z + (f.z / fl) * 1.3); }
     p.x = Math.round(hitPt.x * 10) / 10;
     p.z = Math.round(hitPt.z * 10) / 10;
     // shelf colliders were built at the origin with a rotation; recompute the footprint for this rotation
@@ -222,6 +232,7 @@ export class Decor {
     const p = this.placing;
     if (!p) return;
     p.built.root.parent?.remove(p.built.root);
+    p.built.root.traverse((o) => { if (o.isMesh && o.material.opacity === 0.5) o.material.dispose?.(); });
     this.placing = null;
     this.ring.visible = false;
     this.bar.hidden = true;
