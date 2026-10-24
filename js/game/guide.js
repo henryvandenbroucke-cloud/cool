@@ -122,7 +122,7 @@ export class Guide {
     this.recalc = 0;
     this.lastFrom = new THREE.Vector3(1e9, 0, 0);
     this.mat = new THREE.ShaderMaterial({
-      vertexShader: pathVert, fragmentShader: pathFrag, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      vertexShader: pathVert, fragmentShader: pathFrag, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
       uniforms: { uTime: { value: 0 }, uLen: { value: 1 }, uColor: { value: new THREE.Color('#ffb35c') } },
     });
     this.path = new THREE.Mesh(new THREE.BufferGeometry(), this.mat);
