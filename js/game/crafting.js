@@ -107,6 +107,7 @@ export class Crafting {
     this.world.scene.add(this.stage);
     this.el.root.classList.remove('revealing');
     this.cs = this.ls = this.lsn = this.gs = null;
+    this.player.focus({ pos: st.work.clone().add(B.cam), look: st.work.clone().add(B.look) });
   }
 
   removeStage() {
@@ -627,7 +628,7 @@ export class Crafting {
         if (this.ls !== ls) return;
         const l = this.lampModel({ shade, filter, on });
         l.add(ls.chain);
-        light.intensity = on ? 1.6 : 0;
+        light.intensity = on ? 0.7 : 0;
       }, t);
     }
     setTimeout(() => {
@@ -871,6 +872,9 @@ export class Crafting {
     this.onCrafted?.(key, stars);
     this.clearUI();
     this.el.root.classList.add('revealing');
+    // tilt the view down a touch so the finished piece sits above the card
+    const { st, B } = this.active;
+    this.player.focus({ pos: st.work.clone().add(B.cam).add(V3(0, 0.06, 0.08)), look: st.work.clone().add(B.look).add(V3(0, -0.14, 0)) });
     this.el.step.innerHTML = '';
     this.el.pips.querySelectorAll('span').forEach((p) => { p.className = 'done'; });
     // swap in the finished model (lit where it can be) and lift it into the light
