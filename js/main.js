@@ -117,7 +117,7 @@ async function boot() {
         : `<div><b>New shop ${i + 1}</b><small>Start fresh at the edge of the forest</small></div><span class="go" aria-hidden="true">→</span>`;
       const go = (e) => { if (e.target.dataset.del) return; begin(i); };
       b.addEventListener('click', go);
-      b.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') begin(i); });
+      b.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && !playing) { e.preventDefault(); begin(i); } });
       wrap.appendChild(b);
     }
     wrap.querySelectorAll('[data-del]').forEach((d) => d.addEventListener('click', (e) => {
@@ -138,8 +138,10 @@ async function boot() {
   let playing = false;
   let starting = false;
   const begin = async (slot) => {
-    if (starting) return;
+    if (starting || playing) return;
     starting = true;
+    // nothing on the title keeps keyboard focus into the game (Enter/Space must not restart a save)
+    document.activeElement?.blur?.();
     await audio.start();
     const state = load(slot) || newGame(slot);
     save(state);

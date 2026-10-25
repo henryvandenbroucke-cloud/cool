@@ -64,8 +64,8 @@ class Customer {
     this.t = Math.random() * 10;
     // a tote bag on the shoulder; what they pick up goes in here
     this.bag = makeBag(BAG_COLORS[Math.floor(Math.random() * BAG_COLORS.length)]);
-    const half = (model.userData.size?.x ?? 0.4) / 2;
-    this.bag.position.set(Math.min(0.32, half * 0.85 + 0.05), HEIGHT * 0.36, 0.02);
+    // hangs just outside the arm, at the hip, slightly forward so it reads from most angles
+    this.bag.position.set(0.42, HEIGHT * 0.36, 0.07);
     this.root.add(this.bag);
   }
 
@@ -474,9 +474,9 @@ function shuffle(a, r) { for (let i = a.length - 1; i > 0; i--) { const j = Math
 function makeBag(color) {
   const g = new THREE.Group();
   const cloth = litMat({ color, roughness: 0.95 });
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.19, 0.07), cloth);
-  body.position.y = -0.1;
-  const strap = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.008, 6, 16, Math.PI), cloth);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.25, 0.1), cloth);
+  body.position.y = -0.13;
+  const strap = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.01, 6, 16, Math.PI), cloth);
   strap.position.y = -0.005;
   g.add(body, strap);
   g.userData.body = body;
