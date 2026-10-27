@@ -1,0 +1,26 @@
+# start_in_vo  source  src_time
+0.00  Understa1959 427
+1.30  Understa1959 400
+3.55  AgeofTur1953 98
+4.60  AgeofTur1953 21
+6.00  ShyGuy1947 21
+7.40  ShyGuy1947 261
+8.80  ShyGuy1947 541
+10.60 ShyGuy1947 381
+12.45 JuniorPr1946 728
+15.05 Understa1959 222
+16.35 AgeofTur1953 70
+17.95 JuniorPr1946 890
+21.00 JuniorPr1946 322
+23.20 JuniorPr1946 803
+26.65 AgeofTur1953 430
+27.60 Understa1959 632
+30.80 AgeofTur1953 301
+32.70 JuniorPr1946 1052
+34.80 ShyGuy1947 680
+36.90 AgeofTur1953 461
+39.70 JuniorPr1946 812
+41.05 Understa1959 541
+42.65 ShyGuy1947 741
+43.85 JuniorPr1946 901
+45.30 JuniorPr1946 908
