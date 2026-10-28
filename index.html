@@ -5,16 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>BABEL° — Translator · Speak every language</title>
   <meta name="description" content="BABEL is a free translator for 200+ languages with live translation, voice in & out, auto-detect, history, favourites and a phrasebook. No sign-up.">
-  <meta name="theme-color" content="#070510">
+  <meta name="theme-color" content="#000000">
   <meta name="color-scheme" content="dark">
   <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
-  <link rel="preload" href="/assets/fonts/space-grotesk-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="/assets/fonts/instrument-serif-italic.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/css/translator.css">
+  <link rel="stylesheet" href="/css/translator.css?v=2">
 </head>
 <body>
-  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
-  <div class="grain" aria-hidden="true"></div>
   <a class="skip" href="#translator">Skip to translator</a>
 
   <header class="top">
@@ -24,15 +20,15 @@
     </a>
     <p class="top__tag"><span id="lang-count">207</span> languages · free · no sign-up</p>
     <nav class="top__nav" aria-label="Site">
-      <button class="pill" id="nav-history" type="button">🕘 History</button>
-      <button class="pill" id="nav-favs" type="button">★ Saved</button>
+      <button class="pill" id="nav-history" type="button">History</button>
+      <button class="pill" id="nav-favs" type="button">Saved</button>
     </nav>
   </header>
 
   <main>
     <section class="hero">
-      <h1>Say it in <em>every</em><br>language.</h1>
-      <p class="hero__sub">Type, speak or drop a file — BABEL translates live between <strong>200+ languages</strong>, reads it back aloud, and remembers what matters to you.</p>
+      <h1>Translator</h1>
+      <p class="hero__sub"><strong>207 languages.</strong> Type or speak — it translates as you go.</p>
       <div class="hero__chips" id="quick-pairs" aria-label="Popular language pairs"></div>
     </section>
 
@@ -114,7 +110,7 @@
           <div class="alt-chips" id="alternatives"></div>
         </div>
         <div class="extra" id="dict-wrap" hidden>
-          <h3>📖 Dictionary</h3>
+          <h3>Dictionary</h3>
           <p id="dict-body"></p>
         </div>
       </div>
@@ -122,33 +118,26 @@
 
     <!-- ============ PHRASEBOOK ============ -->
     <section class="block" aria-labelledby="phrase-title">
-      <div class="block__head"><h2 id="phrase-title">✈️ Phrasebook</h2><p>Tap a phrase — it translates instantly. Perfect for travel.</p></div>
+      <div class="block__head"><h2 id="phrase-title">Phrasebook</h2><p>Tap a phrase to translate it.</p></div>
       <div class="phrases" id="phrases"></div>
     </section>
 
     <!-- ============ HISTORY / SAVED ============ -->
     <section class="block grid2">
       <div aria-labelledby="hist-title">
-        <div class="block__head"><h2 id="hist-title">🕘 History</h2><button class="mini" id="clear-history" type="button">Clear</button></div>
+        <div class="block__head"><h2 id="hist-title">History</h2><button class="mini" id="clear-history" type="button">Clear</button></div>
         <ul class="cards-list" id="history-list"><li class="empty">Nothing yet — your translations will live here.</li></ul>
       </div>
       <div aria-labelledby="fav-title">
-        <div class="block__head"><h2 id="fav-title">★ Saved</h2><button class="mini" id="clear-favs" type="button">Clear</button></div>
+        <div class="block__head"><h2 id="fav-title">Saved</h2><button class="mini" id="clear-favs" type="button">Clear</button></div>
         <ul class="cards-list" id="fav-list"><li class="empty">Star a translation to keep it forever.</li></ul>
       </div>
     </section>
 
-    <!-- ============ WHY ============ -->
-    <section class="block why" aria-label="Why BABEL">
-      <article><span>⚡</span><h3>Live as you type</h3><p>No button-mashing. Translation starts while you write, speak or paste.</p></article>
-      <article><span>🎙️</span><h3>Voice in &amp; out</h3><p>Dictate in your language, hear the result spoken natively back to you.</p></article>
-      <article><span>🧠</span><h3>Triple-engine brain</h3><p>Three translation engines race behind one box — if one fails, another answers.</p></article>
-      <article><span>🔒</span><h3>Private by default</h3><p>History &amp; favourites never leave your browser. No account, no tracking.</p></article>
-    </section>
 
     <footer class="foot">
       <p><strong>BABEL°</strong> · 200+ languages · free, no sign-up</p>
-      <p class="foot__fine">Translations by Google Translate &amp; MyMemory. Voice by your browser.</p>
+      <p class="foot__fine">Translations by Google Translate &amp; MyMemory.</p>
     </footer>
   </main>
 

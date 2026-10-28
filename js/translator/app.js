@@ -115,11 +115,11 @@ $('#quick-pairs').querySelectorAll('.chip').forEach((c) => c.addEventListener('c
 
 /* ---------- phrasebook ---------- */
 const PHRASES = [
-  ['Hello 👋','Hello'],['Thank you 🙏','Thank you very much'],['Please 🙇','Please'],['Excuse me ✋','Excuse me'],
-  ['Where is…? 🗺️','Where is the nearest station?'],['How much? 💶','How much does this cost?'],['Help! 🆘','Help! I need help'],
-  ['I love you ❤️','I love you'],['Good morning ☀️','Good morning'],['Good night 🌙','Good night'],
-  ['See you later 👋','See you later'],['I don’t understand 🤔','I don’t understand'],['Do you speak English? 🗣️','Do you speak English?'],
-  ['Cheers! 🥂','Cheers!'],['Happy birthday 🎂','Happy birthday!'],['Welcome 🎉','Welcome!'],
+  ['Hello','Hello'],['Thank you','Thank you very much'],['Please','Please'],['Excuse me','Excuse me'],
+  ['Where is…?','Where is the nearest station?'],['How much?','How much does this cost?'],['Help!','Help! I need help'],
+  ['I love you','I love you'],['Good morning','Good morning'],['Good night','Good night'],
+  ['See you later','See you later'],['I don’t understand','I don’t understand'],['Do you speak English?','Do you speak English?'],
+  ['Cheers!','Cheers!'],['Happy birthday','Happy birthday!'],['Welcome','Welcome!'],
 ];
 $('#phrases').innerHTML = PHRASES.map(([label, text]) => `<button class="phrase" data-text="${text.replace(/"/g,'&quot;')}">${label}<small>${text}</small></button>`).join('');
 $('#phrases').querySelectorAll('.phrase').forEach((b) => b.addEventListener('click', () => {

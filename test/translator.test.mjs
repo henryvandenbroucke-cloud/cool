@@ -45,6 +45,8 @@ const html = read('index.html');
 check('index.html loads translator assets', html.includes('/css/translator.css') && html.includes('/js/translator/app.js'));
 check('index.html has core controls', ['id="input"','id="output"','id="swap"','id="go"','id="mic"','id="phrases"','id="history-list"','id="fav-list"'].every((s) => html.includes(s)));
 check('server exposes /api/translate proxy', read('server.mjs').includes('/api/translate'));
+const css = read('css/translator.css');
+check('design is minimal black, no neon/aurora/gradients', css.includes('--bg:#000') && !css.includes('aurora') && !css.includes('linear-gradient') && !/aurora|#c792ff|#7cf7d4/.test(css));
 check('homepage is the translator (no calculator left)', html.includes('id="translator"') && !html.includes('class="calculator"'));
 
 console.log(fails ? `\n${fails} FAILING` : '\nAll translator checks passed');
