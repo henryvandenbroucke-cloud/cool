@@ -319,7 +319,7 @@ function syncURL() {
   const p = new URLSearchParams();
   if (els.input.value) p.set('q', els.input.value);
   p.set('sl', state.from); p.set('tl', state.to);
-  history.replaceState(null, '', `${location.pathname}?${p}`);
+  window.history.replaceState(null, '', `${location.pathname}?${p}`);
 }
 els.input.addEventListener('change', syncURL);
 
