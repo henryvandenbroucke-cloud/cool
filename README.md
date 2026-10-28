@@ -140,3 +140,22 @@ fallback backgrounds; the animated palette simply snaps instead of gliding.
 ## Licence
 
 MIT — see [LICENSE](LICENSE).
+
+---
+
+## 🌐 BABEL° — the translator (new)
+
+**`/translate.html`** — a translator, but cooler. **207 languages**, free, no sign-up, no API key.
+
+| Feature | What it does |
+|---|---|
+| **Live translation** | Translates as you type (debounced), with auto-detect, detected-language badge and engine badge |
+| **Triple-engine brain** | Same-origin `/api/translate` proxy (Google) → Google direct → MyMemory; if one engine dies, another answers. Long text is auto-chunked on sentence boundaries |
+| **Voice in & out** | 🎙️ Dictate with speech recognition, 🔊 hear source & translation spoken in the right language/voice |
+| **Language pickers** | Searchable pickers with flags + native names, Popular & Recent sections, quick-pair chips, one-tap swap (keeps your text) |
+| **Phrasebook** | 15 travel essentials that translate on tap |
+| **History & Saved** | Last 30 translations + starred favourites, stored only in your browser (`localStorage`) — click any card to restore it |
+| **Tools** | Copy, paste, download `.txt`, translate a `.txt/.md/.srt` file, share via link (text + languages encoded in the URL), dictionary definitions for English words, alternative translations |
+| **Nice details** | RTL layout for Arabic/Hebrew/Urdu…, char/word counts, `Ctrl+Enter` to translate, `Ctrl+Shift+S` to swap |
+
+Run it the same way: `npm start` → <http://localhost:4173/translate.html> (also linked from the PRISM homepage header). Tests: `npm run test:translator`.

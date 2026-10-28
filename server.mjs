@@ -54,7 +54,40 @@ async function resolveFile(urlPath) {
   return null;
 }
 
+/** BABEL translation proxy — avoids browser CORS limits, keeps keys at zero. */
+async function handleTranslate(req, res) {
+  const url = new URL(req.url, 'http://localhost');
+  const q = (url.searchParams.get('q') || '').slice(0, 900);
+  const sl = (url.searchParams.get('sl') || 'auto').slice(0, 12);
+  const tl = (url.searchParams.get('tl') || 'en').slice(0, 12);
+  const json = (code, body) => {
+    res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify(body));
+  };
+  if (!q) return json(400, { error: 'missing q' });
+  try {
+    const g = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(sl)}&tl=${encodeURIComponent(tl)}&dt=t&q=${encodeURIComponent(q)}`);
+    if (!g.ok) throw new Error(`google ${g.status}`);
+    const data = await g.json();
+    const translated = (data[0] || []).map((seg) => seg[0] || '').join('');
+    return json(200, { translated, detected: data[2] || null, engine: 'google' });
+  } catch {
+    try {
+      const from = sl === 'auto' ? 'autodetect' : sl;
+      const m = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(q)}&langpair=${encodeURIComponent(from + '|' + tl)}`);
+      const data = await m.json();
+      return json(200, { translated: data?.responseData?.translatedText || '', detected: data?.responseData?.detectedLanguage || null, engine: 'mymemory' });
+    } catch (e) {
+      return json(502, { error: 'all engines failed' });
+    }
+  }
+}
+
 const server = createServer(async (req, res) => {
+  if (req.url && req.url.startsWith('/api/translate')) {
+    if (req.method !== 'GET') { res.writeHead(405); res.end(); return; }
+    return handleTranslate(req, res);
+  }
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     res.writeHead(405, { Allow: 'GET, HEAD' });
     res.end('Method Not Allowed');

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>BABEL° — Speak every language · PRISM Translator</title>
+  <meta name="description" content="BABEL is a free translator for 200+ languages with live translation, voice in & out, auto-detect, history, favourites and a phrasebook. No sign-up.">
+  <meta name="theme-color" content="#070510">
+  <meta name="color-scheme" content="dark">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/assets/fonts/space-grotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/assets/fonts/instrument-serif-italic.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/css/translator.css">
+</head>
+<body>
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+  <div class="grain" aria-hidden="true"></div>
+  <a class="skip" href="#translator">Skip to translator</a>
+
+  <header class="top">
+    <a class="brand" href="/translate.html" aria-label="BABEL home">
+      <span class="brand__globe" aria-hidden="true">🌐</span>
+      <span class="brand__word">BABEL<sup>°</sup></span>
+    </a>
+    <p class="top__tag"><span id="lang-count">207</span> languages · free · no sign-up</p>
+    <nav class="top__nav" aria-label="Site">
+      <button class="pill" id="nav-history" type="button">🕘 History</button>
+      <button class="pill" id="nav-favs" type="button">★ Saved</button>
+      <a class="pill pill--ghost" href="/">← PRISM</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>Say it in <em>every</em><br>language.</h1>
+      <p class="hero__sub">Type, speak or drop a file — BABEL translates live between <strong>200+ languages</strong>, reads it back aloud, and remembers what matters to you.</p>
+      <div class="hero__chips" id="quick-pairs" aria-label="Popular language pairs"></div>
+    </section>
+
+    <!-- ============ TRANSLATOR CARD ============ -->
+    <section class="card" id="translator" aria-label="Translator">
+      <div class="langbar">
+        <div class="picker" data-picker="from">
+          <button class="picker__btn" type="button" id="from-btn" aria-haspopup="listbox" aria-expanded="false">
+            <span class="picker__flag" id="from-flag">🇬🇧</span>
+            <span class="picker__name" id="from-name">Auto detect</span>
+            <span class="picker__caret" aria-hidden="true">▾</span>
+          </button>
+          <div class="picker__panel" id="from-panel" hidden>
+            <label class="search"><span aria-hidden="true">🔎</span><input type="search" id="from-search" placeholder="Search languages…" autocomplete="off"></label>
+            <div class="picker__list" id="from-list" role="listbox" aria-label="Source language"></div>
+          </div>
+        </div>
+
+        <button class="swap" id="swap" type="button" aria-label="Swap languages" title="Swap languages (Ctrl+Shift+S)">⇄</button>
+
+        <div class="picker" data-picker="to">
+          <button class="picker__btn" type="button" id="to-btn" aria-haspopup="listbox" aria-expanded="false">
+            <span class="picker__flag" id="to-flag">🇪🇸</span>
+            <span class="picker__name" id="to-name">Spanish</span>
+            <span class="picker__caret" aria-hidden="true">▾</span>
+          </button>
+          <div class="picker__panel" id="to-panel" hidden>
+            <label class="search"><span aria-hidden="true">🔎</span><input type="search" id="to-search" placeholder="Search languages…" autocomplete="off"></label>
+            <div class="picker__list" id="to-list" role="listbox" aria-label="Target language"></div>
+          </div>
+        </div>
+      </div>
+
+      <p class="detected" id="detected" hidden>Detected: <strong id="detected-name"></strong></p>
+      <p class="recents" id="recents" aria-label="Recently used languages"></p>
+
+      <div class="panes">
+        <div class="pane pane--in">
+          <textarea id="input" rows="6" maxlength="5000" placeholder="Type or speak something beautiful…" aria-label="Text to translate" dir="auto"></textarea>
+          <div class="pane__foot">
+            <span class="tools">
+              <button class="tool" id="mic" type="button" title="Speak (voice input)" aria-label="Speak your text">🎙️</button>
+              <button class="tool" id="listen-in" type="button" title="Listen" aria-label="Listen to source text">🔊</button>
+              <button class="tool" id="paste" type="button" title="Paste from clipboard" aria-label="Paste">📋</button>
+              <button class="tool" id="upload" type="button" title="Translate a .txt file" aria-label="Upload text file">📄</button>
+              <input type="file" id="file" accept=".txt,.md,.csv,.srt" hidden>
+              <button class="tool" id="clear" type="button" title="Clear" aria-label="Clear text">✕</button>
+            </span>
+            <span class="count"><span id="char-count">0</span> / 5,000 · <span id="word-count">0</span> words</span>
+          </div>
+        </div>
+
+        <div class="pane pane--out">
+          <div class="output" id="output" dir="auto" aria-live="polite" aria-label="Translation">
+            <span class="output__placeholder">Your translation appears here — in any of 200+ languages ✨</span>
+          </div>
+          <div class="thinking" id="thinking" hidden><i></i><i></i><i></i> translating…</div>
+          <div class="pane__foot">
+            <span class="tools">
+              <button class="tool" id="listen-out" type="button" title="Listen" aria-label="Listen to translation">🔊</button>
+              <button class="tool" id="copy" type="button" title="Copy translation" aria-label="Copy translation">⧉</button>
+              <button class="tool" id="star" type="button" title="Save to favourites" aria-label="Save translation">☆</button>
+              <button class="tool" id="download" type="button" title="Download .txt" aria-label="Download translation">⬇</button>
+              <button class="tool" id="share" type="button" title="Copy share link" aria-label="Share">🔗</button>
+            </span>
+            <span class="engine" id="engine-badge"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card__actions">
+        <button class="translate-btn" id="go" type="button">Translate <kbd>Ctrl ↵</kbd></button>
+        <p class="status" id="status" role="status"></p>
+      </div>
+
+      <div class="extras" id="extras" hidden>
+        <div class="extra" id="alternatives-wrap" hidden>
+          <h3>Also possible</h3>
+          <div class="alt-chips" id="alternatives"></div>
+        </div>
+        <div class="extra" id="dict-wrap" hidden>
+          <h3>📖 Dictionary</h3>
+          <p id="dict-body"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PHRASEBOOK ============ -->
+    <section class="block" aria-labelledby="phrase-title">
+      <div class="block__head"><h2 id="phrase-title">✈️ Phrasebook</h2><p>Tap a phrase — it translates instantly. Perfect for travel.</p></div>
+      <div class="phrases" id="phrases"></div>
+    </section>
+
+    <!-- ============ HISTORY / SAVED ============ -->
+    <section class="block grid2">
+      <div aria-labelledby="hist-title">
+        <div class="block__head"><h2 id="hist-title">🕘 History</h2><button class="mini" id="clear-history" type="button">Clear</button></div>
+        <ul class="cards-list" id="history-list"><li class="empty">Nothing yet — your translations will live here.</li></ul>
+      </div>
+      <div aria-labelledby="fav-title">
+        <div class="block__head"><h2 id="fav-title">★ Saved</h2><button class="mini" id="clear-favs" type="button">Clear</button></div>
+        <ul class="cards-list" id="fav-list"><li class="empty">Star a translation to keep it forever.</li></ul>
+      </div>
+    </section>
+
+    <!-- ============ WHY ============ -->
+    <section class="block why" aria-label="Why BABEL">
+      <article><span>⚡</span><h3>Live as you type</h3><p>No button-mashing. Translation starts while you write, speak or paste.</p></article>
+      <article><span>🎙️</span><h3>Voice in &amp; out</h3><p>Dictate in your language, hear the result spoken natively back to you.</p></article>
+      <article><span>🧠</span><h3>Triple-engine brain</h3><p>Three translation engines race behind one box — if one fails, another answers.</p></article>
+      <article><span>🔒</span><h3>Private by default</h3><p>History &amp; favourites never leave your browser. No account, no tracking.</p></article>
+    </section>
+
+    <footer class="foot">
+      <p><strong>BABEL°</strong> by PRISM · 200+ languages · <a href="/">Back to the six rooms →</a></p>
+      <p class="foot__fine">Translations by Google Translate &amp; MyMemory. Voice by your browser.</p>
+    </footer>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="/js/translator/app.js"></script>
+</body>
+</html>
