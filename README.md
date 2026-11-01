@@ -1,142 +1,129 @@
-# PRISM
+# TOUCHLINE
 
-**An interactive study in six states of light.**
+**A browser football management game.** Pick a club, pick your eleven, and take
+charge of every matchday of a full league season.
 
-PRISM is a scroll-driven web experience: six rooms, six palettes, one continuous
-atmosphere rendered by a single WebGL fragment shader. Particles refract, colour
-melts, a lattice remembers its shape, type finds a rhythm, and a sphere of light
-scatters around your cursor and gathers itself again.
-
-Hand-built with vanilla JavaScript, CSS, Canvas 2D, GLSL and the Web Audio API.
-**No frameworks, no build step, no runtime dependencies.**
-
----
-
-## The six rooms
-
-| # | Room | What happens | Engine |
-|---|------|--------------|--------|
-| 00 | **Aperture** | Giant kinetic wordmark, aperture rings, cursor parallax | WebGL · CSS |
-| 01 | **Refraction** | 2,000 particles trace an invisible flow field; your cursor adds a vortex | Canvas 2D |
-| 02 | **Fluid** | Luminous colour fields pool, merge and leave a wake when you stir | Canvas 2D + CSS |
-| 03 | **Gravity** | A spring lattice you can pull; it deforms and remembers | Canvas 2D physics |
-| 04 | **Rhythm** | The daylight room: kinetic marquees, scrambling type, a meter | CSS |
-| 05 | **Spectrum** | 1,600 particles on a sphere scatter at your touch, then re-gather | Canvas 2D |
-
-Each room owns a palette; the page cross-fades between them as you scroll and the
-shader's motif changes with it — rings, a refracted fan of rays, caustics,
-gravitational lensing, paper, a spectral veil.
-
-## Controls
-
-| Input | Result |
-|-------|--------|
-| **Move** | Bends every field. The cursor is a second light source. |
-| **Scroll / drag** | Travels between rooms; palette follows the room in the centre. |
-| **Sound toggle** | Starts a generative pad + occasional notes, one voice per room. |
-| **Shuffle** (room 04) | Scrambles the word. |
-| **Keyboard** | `Tab` through everything, `Enter`/`Space` to activate, `Esc`-free. |
-
-## Run it
+Ten clubs, 18 matchdays, 90 fixtures, five formations, a live match engine and a
+league table that actually adds up. Hand-built with vanilla JavaScript, CSS and
+SVG — **no frameworks, no build step, no runtime dependencies.**
 
 ```bash
 npm start
 # → http://localhost:4173
 ```
 
-`server.mjs` is a ~100-line dependency-free static server (binds `0.0.0.0`,
-correct MIME types, traversal guard, no host allowlist). Any static server works:
+---
+
+## The loop
+
+1. **Take a job.** Choose from ten clubs — from title-or-nothing Man City to
+   survival-brief Everton. The board's expectation changes with the squad.
+2. **Pick your eleven.** Drag shirts between slots on the tactics board, or tap a
+   shirt then a bench player to swap. Five shapes, each with its own slot map and
+   player-role fit.
+3. **Set the tone.** Defensive, Balanced or Attacking — it shifts your expected
+   goals for *and* against.
+4. **Play the match.** Kick off and watch the clock run with live commentary,
+   goals, cards, chances, a scoreboard, in-play stats and full-time player
+   ratings. Skip to full time if you're impatient.
+5. **Watch the table.** Every other fixture in the round is simulated too, so the
+   league moves around you.
+6. **Repeat.** Eighteen matchdays, then a season review and a new campaign with
+   aged squads and developing youngsters.
+
+A career saves to `localStorage` automatically, so you can close the tab and
+continue later.
+
+## What's in it
+
+| | |
+|---|---|
+| **Squad view** | Sortable, filterable list with condition, morale, goals, assists, value; click any player for an attribute dossier |
+| **Tactics board** | 4-3-3, 4-2-3-1, 4-4-2, 3-4-2-1, 5-3-2 · drag-and-drop · role-fit warnings · auto-pick |
+| **Match centre** | Pre-match opposition report, live commentary, in-play stats, post-match ratings |
+| **League table** | Full standings, form guide, European/relegation zones, fixture list, recent results |
+| **Season loop** | Board expectations, end-of-season review, squad ageing and progression between seasons |
+
+## How the engine works
+
+Everything is deterministic: a fixture's 90 minutes are generated from a seeded
+PRNG derived from the club ids, season and round, so the same match always
+replays the same way.
+
+- **Expected goals** for each side come from the XI strength of the attack against
+  the opponent's defence, adjusted for home advantage and mentality:
+  `λ = 1.38 · e^(gap/10 · 0.46) · venue · style`.
+- **Goals** are Poisson-sampled from λ; scorers and assisters are weighted by
+  role and rating, so centre-backs score rarely and strikers score often.
+- **Colour events** (saves, misses, cards) pace the commentary without touching
+  the score.
+- **After the whistle**, results are applied to the table, goals and assists are
+  credited, condition drops by minutes played, morale tracks results, and every
+  other fixture in the round is simulated.
+
+Player attributes are derived from position, overall and age (with a small
+deterministic jitter), so a squad list stays compact but a winger still has pace
+and a keeper still has reflexes.
+
+## Run it
+
+```bash
+npm start        # static server on 0.0.0.0:4173
+npm test         # data + engine + render checks
+npm run test:dom # optional jsdom click-through (needs: npm i --no-save jsdom)
+```
+
+`server.mjs` is a ~100-line dependency-free static server (correct MIME types,
+path-traversal guard, no host allowlist). Any static file server works:
 
 ```bash
 python3 -m http.server 4173
 ```
 
-It's a fully static site — nothing is compiled at runtime.
+No bundler, no transpiler — the browser loads ES modules directly.
 
-## How it's built
+## Layout
 
 ```
-index.html               Semantics + all six rooms of copy
-css/style.css            Design system, @property colour tokens, layout, motion
-js/main.js               Boot, scroll choreography, cursor, reveals, audio wiring
-js/webgl.js              The sky: one shader, six motifs
-js/core/palette.js       The six states of light + animated interpolation
-js/core/utils.js         Frame-rate independent maths, colour helpers
-js/scenes/base.js        DPR sizing, pointer state, visibility, static fallbacks
-js/scenes/flow.js        Refraction — flow field
-js/scenes/goo.js         Fluid — metaballs
-js/scenes/cloth.js       Gravity — spring lattice
-js/scenes/orb.js         Spectrum — particle sphere
-js/audio.js              Generative six-room instrument
-assets/fonts/            Self-hosted Space Grotesk + Instrument Serif (OFL)
+index.html                  Shell, fonts, meta
+css/style.css               Design system: tokens, layout, pitch, match UI
+js/main.js                  Boot, routing, match clock, event delegation
+js/store.js                 Career state + localStorage persistence
+js/data/league.js           Ten clubs, ~180 players, colours, grounds
+js/core/rng.js              Seeded PRNG (mulberry32) + Poisson/normal helpers
+js/core/attrs.js            Derived attributes, role contribution, market value
+js/core/formations.js       Shape definitions, role fit, auto-pick
+js/engine/state.js          Squads, fixtures, table, season progression
+js/engine/match.js          Match simulation, results, condition and morale
+js/ui/*.js                  Landing, shell, squad, tactics, match, table views
+test/                       Data, engine, render and jsdom integration tests
 ```
 
 Three decisions worth calling out:
 
-**One frame loop.** A single `requestAnimationFrame` updates the shader, all four
-canvas rooms, the scroll inertia, palette interpolation and the cursor. Rooms that
-aren't near the viewport are skipped entirely, so the page costs the same whether
-you're looking at one room or six.
+**Views are strings.** Every screen is a pure function of state returning markup,
+so the whole UI can be asserted on in Node without a browser — `test/render.test.mjs`
+catches undefined interpolations and broken empty states.
 
-**The palette is the interface.** Colours live as RGB triples in
-`core/palette.js`, are interpolated every frame, and are handed to both CSS
-(`--accent`, `--bg`, …) and the shader as uniforms — so the chrome, the canvases
-and the atmosphere can never drift out of sync.
+**One state object.** A career is plain JSON: squads, table, fixtures, lineup,
+mentality. Saving is `JSON.stringify`, loading is `JSON.parse`, and there is no
+migration code.
 
-**Fallbacks everywhere.** No WebGL? A CSS gradient sky takes over. No
-`IntersectionObserver`? Content reveals immediately. Reduced motion? Every room
-renders a composed still. Module fails to load? A `setTimeout` in the document
-lifts the curtain and reveals the type.
+**The clock renders one view.** While a match runs, only the match panel is
+repainted (six times a second), so the nav, rail and scroll position stay put.
 
 ## Accessibility & performance
 
-- Respects `prefers-reduced-motion` — no scroll hijack, no physics, no drifting
-  grain; every room renders its still frame.
-- Smooth scroll is opt-out: it's disabled for touch-primary devices and reduced
-  motion, and never intercepts pinch-zoom.
-- Semantic landmarks, one `h1`, labelled sections and buttons, a skip link,
-  visible `:focus-visible` rings, `aria-current` on the chapter rail.
-- HUD and cursor use `mix-blend-mode: difference`, so they stay legible on both
-  night and daylight rooms without colour guessing.
-- Device pixel ratio is capped and total pixel budgets are enforced per canvas;
-  the blur-heavy fluid room softens further on small screens.
-- Audio is never autoplayed — it is only created inside a click, and never more
-  than one context exists.
+Keyboard-reachable buttons, `aria-current` on the active nav item, focus rings,
+`prefers-reduced-motion` support, and layout down to 360 px (the sidebar becomes
+a bottom tab bar below 820 px). No network calls at runtime, no analytics.
 
-## Tests
+## Data & disclaimer
 
-The experience is tested headlessly rather than by eye:
+An unofficial fan project made for fun. **Club names, player names and stadiums
+are real; every rating, attribute, contract, result and table position is
+invented** for this game. There is no official data, no live feed and no
+affiliation with any club, league or Sports Interactive/SEGA.
 
-```bash
-npm install          # dev-only: jsdom + glslang
-npm test
-```
-
-| Suite | What it proves |
-|-------|----------------|
-| `test/assets` | Every HTML reference, anchor target and ES module resolves; all canvas rooms have factories. |
-| `test/shader` | The vertex and fragment shaders compile as real GLSL (via glslang → SPIR-V), not just "look right". |
-| `test/physics` | Particles stay finite and in bounds, the lattice deforms then relaxes to <0.5px, the orb scatters and returns, reduced-motion rendering never throws. |
-| `test/boot` | A full jsdom boot: six rooms mount, the wheel hijack captures, the loader dismisses, palettes follow every room, the daylight flip works, the rail tracks the active chapter, zero uncaught errors. |
-
-The suites caught two real bugs during development: a theme initialisation race
-that aborted boot, and a lattice coupling term that used absolute positions
-instead of displacement, leaving the grid permanently squashed.
-
-## Credits
-
-- **Type:** [Space Grotesk](https://github.com/floriankarsten/space-grotesk) and
-  [Instrument Serif](https://github.com/Instrument/instrument-serif), both under
-  the SIL Open Font License — licences in `assets/fonts/`.
-- **Everything else:** written for this project. WebGL, Canvas 2D, Web Audio, CSS.
-  No libraries, no images, no video, no Lottie, no Three.js.
-
-## Browser support
-
-Modern evergreen browsers (Chrome/Edge 111+, Safari 16.4+, Firefox 128+ for
-`@property` colour interpolation). Older browsers get the layout, type and
-fallback backgrounds; the animated palette simply snaps instead of gliding.
-
-## Licence
-
-MIT — see [LICENSE](LICENSE).
+Fonts: Space Grotesk and Instrument Serif, both self-hosted under the SIL Open
+Font License (see `assets/fonts/`).
