@@ -1,6 +1,6 @@
 /** Application chrome: sidebar, top bar and the right-hand rail. */
-import { CLUB_BY_ID, groupOf } from '../data/league.js';
-import { ROUNDS, fixtureFor, formationOf, leaguePosition, sortTable, squadOf, xiStrength } from '../engine/state.js';
+import { CLUB_BY_ID, DATA_SNAPSHOT, groupOf } from '../data/league.js';
+import { fixtureFor, formationOf, leaguePosition, seasonComplete, sortTable, squadOf, totalRounds, userProgress, xiStrength } from '../engine/state.js';
 import { crest, clubColorVars } from './crest.js';
 import { escapeHtml, formDots, momentum } from './dom.js';
 
@@ -9,35 +9,38 @@ const ICONS = {
   tactics: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18"/><circle cx="12" cy="12" r="3.2"/></svg>',
   match: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.6 15.6 10l-1.3 4.2H9.7L8.4 10Z"/><path d="M12 3v4.6M20.4 9.4l-4.8.6M17.4 20l-3-3.4M6.6 20l3-3.4M3.6 9.4l4.8.6"/></svg>',
   table: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/><path d="M8 3v18" opacity=".35"/></svg>',
+  guide: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.5C10.5 5 8.5 4.4 5 4.6v13c3.5-.2 5.5.4 7 1.9 1.5-1.5 3.5-2.1 7-1.9v-13c-3.5-.2-5.5.4-7 1.9Z"/><path d="M12 6.5v13"/></svg>',
 };
 
 const TITLES = {
   squad: { eyebrow: 'First team', title: 'Squad' },
   tactics: { eyebrow: 'Match preparation', title: 'Tactics' },
   match: { eyebrow: 'Match centre', title: 'Matchday' },
-  table: { eyebrow: 'Competition', title: 'League table' },
+  table: { eyebrow: 'Competition', title: 'Premier League table' },
+  guide: { eyebrow: 'Manual', title: 'How to play' },
 };
 
 export function renderNav(store) {
   const game = store.game;
   const club = CLUB_BY_ID[game.clubId];
   const items = [
-    ['squad', 'Squad', 'squad'],
-    ['tactics', 'Tactics', 'tactics'],
-    ['match', 'Match', 'match'],
-    ['table', 'Table', 'table'],
+    ['squad', 'Squad'],
+    ['tactics', 'Tactics'],
+    ['match', 'Match'],
+    ['table', 'Table'],
+    ['guide', 'Guide'],
   ];
   return `
-    <nav class="nav" aria-label="Main">
+    <nav class="nav" aria-label="Main" data-tour="nav">
       <a class="brand" href="#squad" data-nav="squad">
         <span class="brand__mark">T</span>
-        <span class="brand__text"><span class="brand__name">TOUCHLINE</span><span class="brand__sub">Management</span></span>
+        <span class="brand__text"><span class="brand__name">TOUCHLINE</span><span class="brand__sub">2026/27</span></span>
       </a>
       <div class="club-chip">
-        ${crest(game.clubId, 30)}
+        ${crest(game.clubId, 32)}
         <div class="club-chip__meta">
           <div class="club-chip__name">${escapeHtml(club.name)}</div>
-          <div class="club-chip__sub">${game.season}/${String(game.season + 1).slice(2)} · ${game.manager}</div>
+          <div class="club-chip__sub">${escapeHtml(game.manager)}</div>
         </div>
       </div>
       <div class="nav__items">
@@ -45,15 +48,20 @@ export function renderNav(store) {
         ${items
           .map(
             ([id, label]) => `
-          <button class="nav__item ${store.view === id ? 'is-active' : ''}" data-nav="${id}" aria-label="${label}" ${store.view === id ? 'aria-current="page"' : ''}>
+          <button class="nav__item ${store.view === id ? 'is-active' : ''}" data-nav="${id}"
+                  aria-label="${label}" ${store.view === id ? 'aria-current="page"' : ''}>
             ${ICONS[id]}<span>${label}</span>
-            ${id === 'match' && !store.match && game.round < ROUNDS ? '<i class="nav__dot"></i>' : ''}
+            ${id === 'match' && !store.match && game.round < totalRounds(game) ? '<i class="nav__dot" aria-hidden="true"></i>' : ''}
           </button>`,
           )
           .join('')}
       </div>
       <div class="nav__spacer"></div>
       <div class="nav__foot">
+        <button class="btn btn--ghost btn--sm" data-action="start-tour" title="Replay the guided tour">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8.5v4l2.5 1.5"/></svg>
+          <span>Tour</span>
+        </button>
         <button class="btn btn--ghost btn--sm" data-action="new-career" title="Start a new career">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12a8 8 0 1 1 2.5 5.8"/><path d="M4 20v-4h4"/></svg>
           <span>New career</span>
@@ -66,15 +74,24 @@ export function renderTopbar(store) {
   const game = store.game;
   const meta = TITLES[store.view] || TITLES.squad;
   const pos = leaguePosition(game);
+  const progress = userProgress(game);
   return `
     <header class="topbar">
-      <div class="topbar__title">
-        <span class="topbar__eyebrow">${meta.eyebrow} · season ${game.season}</span>
-        <h1 class="topbar__h1">${meta.title}</h1>
+      <div class="topbar__titles">
+        <div class="eyebrow">${meta.eyebrow}</div>
+        <h1>${meta.title}</h1>
       </div>
       <div class="topbar__spacer"></div>
-      <div class="round-pill"><span>Matchday <b>${Math.min(game.round + 1, ROUNDS)}</b>/${ROUNDS}</span><span class="dim">·</span><span>${pos}${superscript(pos)} in the league</span></div>
-      <button class="btn btn--primary btn--sm" data-nav="match">${store.match && !store.match.finished ? 'Live' : game.round >= ROUNDS ? 'Season review' : 'Matchday →'}</button>
+      <div class="snapshot" data-tour="snapshot" title="Real 2026/27 data, frozen on ${DATA_SNAPSHOT.date}">
+        <span class="snapshot__dot"></span>
+        <span>Real season · <b>${DATA_SNAPSHOT.date}</b></span>
+      </div>
+      <div class="round-pill">
+        <span>Matchday <b>${Math.min(progress.done + 1, progress.total)}</b>/${progress.total}</span>
+        <span class="dim">·</span>
+        <span>${pos}${superscript(pos)}</span>
+      </div>
+      <button class="btn btn--primary btn--sm" data-nav="match">${store.match && !store.match.finished ? 'Live match' : seasonComplete(game) ? 'Season review' : 'Matchday →'}</button>
     </header>`;
 }
 
@@ -87,7 +104,8 @@ export function renderRail(store) {
   const game = store.game;
   const club = CLUB_BY_ID[game.clubId];
   const squad = squadOf(game, game.clubId);
-  const fixture = game.round < ROUNDS ? fixtureFor(game, game.clubId, game.round + 1) : null;
+  const total = totalRounds(game);
+  const fixture = seasonComplete(game) ? null : fixtureFor(game, game.clubId, game.round + 1);
   const rows = sortTable(game);
   const myIndex = rows.findIndex((r) => r.clubId === game.clubId);
   const miniRows = rows.slice(0, 5);
@@ -98,28 +116,29 @@ export function renderRail(store) {
   const fittest = outfield.slice().sort((a, b) => a.fitness - b.fitness)[0];
 
   return `
-    <aside class="rail" aria-label="Club summary">
+    <aside class="rail" aria-label="Club summary" data-tour="rail">
       <div class="card rail__card">
-        <div class="rail__title"><span>Next fixture</span><span>MD ${Math.min(game.round + 1, ROUNDS)}</span></div>
+        <div class="rail__title"><span>Next fixture</span><span>MD ${Math.min(game.round + 1, total)}</span></div>
         ${
           fixture
             ? `<div class="next-fixture">
                 <div class="row" style="gap:10px">
                   ${crest(fixture.home, 30)}
-                  <div class="next-fixture__team" style="flex:1;min-width:0"><b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${CLUB_BY_ID[fixture.home].name}</b></div>
+                  <div class="next-fixture__team" style="flex:1"><b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${CLUB_BY_ID[fixture.home].name}</b></div>
+                  <span class="tag">${fixture.home === game.clubId ? 'H' : 'A'}</span>
                 </div>
-                <div class="next-fixture__vs" style="text-align:center;font-size:12px">versus</div>
                 <div class="row" style="gap:10px">
                   ${crest(fixture.away, 30)}
-                  <div class="next-fixture__team" style="flex:1;min-width:0"><b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${CLUB_BY_ID[fixture.away].name}</b></div>
+                  <div class="next-fixture__team" style="flex:1"><b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${CLUB_BY_ID[fixture.away].name}</b></div>
+                  <span class="tag">${fixture.away === game.clubId ? 'A' : 'H'}</span>
                 </div>
-                <div class="row row--between" style="margin-top:2px">
-                  <span class="tiny dim">${CLUB_BY_ID[fixture.home].ground}</span>
-                  <span class="tag ${fixture.home === game.clubId ? 'tag--good' : ''}">${fixture.home === game.clubId ? 'Home' : 'Away'}</span>
+                <div class="row row--between">
+                  <span class="tiny dim">${escapeHtml(CLUB_BY_ID[fixture.home].ground)}</span>
+                  <span class="tiny dim">${formationOf(game).name}</span>
                 </div>
-                <button class="btn btn--primary btn--sm" data-nav="match" style="width:100%">Open match centre</button>
+                <button class="btn btn--primary btn--sm btn--block" data-nav="match">Open match centre</button>
               </div>`
-            : `<div class="empty-state" style="padding:18px 8px"><b>Season complete</b><span class="tiny">Head to the match centre for the review.</span></div>`
+            : `<div class="empty-state" style="padding:16px 6px"><b>Season complete</b><span class="tiny">Head to the match centre for the review.</span></div>`
         }
       </div>
 
@@ -138,7 +157,7 @@ export function renderRail(store) {
         </div>
         <div class="row row--between" style="margin-top:14px">
           <div>
-            <div class="tiny dim" style="margin-bottom:4px">Form</div>
+            <div class="tiny dim" style="margin-bottom:5px">Form</div>
             ${formDots(game.table[game.clubId].form)}
           </div>
           <span class="tag ${mood.tone === 'good' ? 'tag--good' : mood.tone === 'bad' ? 'tag--bad' : ''}">${mood.label}</span>
@@ -161,7 +180,7 @@ export function renderRail(store) {
             )
             .join('')}
         </div>
-        <button class="btn btn--ghost btn--sm" data-nav="table" style="width:100%;margin-top:10px">Full table</button>
+        <button class="btn btn--ghost btn--sm btn--block" data-nav="table" style="margin-top:10px">Full table</button>
       </div>
 
       <div class="card rail__card">
@@ -186,7 +205,10 @@ export function renderRail(store) {
         </div>
       </div>
 
-      <p class="tiny dim" style="padding:0 4px">Unofficial fan project · invented ratings & results · saved locally</p>
+      <button class="btn btn--ghost btn--sm btn--block" data-action="start-tour">Replay the tour</button>
+      <p class="tiny dim" style="padding:0 4px">
+        Snapshot ${DATA_SNAPSHOT.date} · ratings are TOUCHLINE estimates · saved locally
+      </p>
     </aside>`;
 }
 

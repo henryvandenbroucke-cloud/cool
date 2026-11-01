@@ -42,7 +42,7 @@ async function boot({ saved } = {}) {
   globalThis.document = window.document;
   globalThis.localStorage = window.localStorage;
   globalThis.Element = window.Element;
-  if (saved) window.localStorage.setItem('touchline.save.v1', saved);
+  if (saved) window.localStorage.setItem('touchline.save.v2', saved);
   window.HTMLElement.prototype.focus = function focus() {};
   // The store module is a singleton across boots; reset it to simulate a reload.
   const { store } = await import('../js/store.js');
@@ -77,7 +77,7 @@ const doc = window.document;
 
 await check('landing screen boots with the club picker', () => {
   assert.ok(doc.querySelector('.landing'), 'no landing screen');
-  assert.equal(doc.querySelectorAll('[data-club]').length, 10);
+  assert.equal(doc.querySelectorAll('[data-club]').length, 20);
   assert.ok(doc.querySelector('[data-action="start"]').disabled);
 });
 
@@ -97,7 +97,18 @@ await check('starting a career paints the app shell', () => {
   assert.ok(doc.querySelector('.app'), 'no app shell');
   assert.ok(doc.querySelectorAll('table.squad tbody tr').length >= 16, 'squad rows missing');
   assert.match(doc.body.textContent, /Mikel Test/);
-  assert.match(doc.querySelector('.topbar__h1').textContent, /Squad/);
+  assert.match(doc.querySelector('.topbar h1').textContent, /Squad/);
+});
+
+await check('the guided tour opens and can be dismissed', async () => {
+  await new Promise((resolve) => setTimeout(resolve, 700));
+  assert.ok(doc.querySelector('.tour'), 'tour did not start');
+  assert.match(doc.querySelector('.tour__title').textContent, /manager/i);
+  click(window, '[data-tour-next]');
+  await new Promise((resolve) => setTimeout(resolve, 120));
+  assert.match(doc.querySelector('.tour__title').textContent, /Real-season data|Four screens|manager/i);
+  click(window, '[data-tour-end]');
+  assert.equal(doc.querySelector('.tour'), null, 'tour did not close');
 });
 
 await check('squad filters and sorting work', () => {
@@ -154,17 +165,17 @@ await check('kick off starts the live clock, skip finishes the match', () => {
 
 await check('continuing moves to the table with the result applied', () => {
   click(window, '[data-action="finish-match"]');
-  assert.match(doc.querySelector('.topbar__h1').textContent, /League table/);
+  assert.match(doc.querySelector('.topbar h1').textContent, /League table/);
   const me = doc.querySelector('tr.is-me');
   assert.ok(me, 'user row not highlighted');
   assert.match(doc.querySelector('.scoreboard') ? 'ok' : 'ok', /ok/);
   // The user's club must show one match played.
   const cells = me.querySelectorAll('td');
-  assert.equal(cells[3].textContent.trim(), '1');
+  assert.equal(cells[3].textContent.trim(), '9');
 });
 
 await check('career is saved to localStorage', () => {
-  const raw = window.localStorage.getItem('touchline.save.v1');
+  const raw = window.localStorage.getItem('touchline.save.v2');
   assert.ok(raw, 'nothing saved');
   const parsed = JSON.parse(raw);
   assert.equal(parsed.clubId, 'arsenal');
@@ -173,7 +184,7 @@ await check('career is saved to localStorage', () => {
 });
 
 await check('reload offers to continue the career', async () => {
-  const saved = window.localStorage.getItem('touchline.save.v1');
+  const saved = window.localStorage.getItem('touchline.save.v2');
   const win2 = await boot({ saved });
   const d2 = win2.document;
   assert.ok(d2.querySelector('[data-action="continue-career"]'), 'continue button missing');

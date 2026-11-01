@@ -1,6 +1,7 @@
 /** Tiny state container: one game object, a view name, and UI prefs. */
 
 import { createGame, SAVE_KEY, advanceSeason } from './engine/state.js';
+import { advanceToUserFixture } from './engine/match.js';
 
 export const store = {
   game: null,
@@ -36,7 +37,7 @@ export function navigate(view) {
 }
 
 export function newCareer(clubId, managerName) {
-  store.game = createGame(clubId, managerName || 'The Gaffer');
+  store.game = advanceToUserFixture(createGame(clubId, managerName || 'The Gaffer'));
   store.view = 'squad';
   store.match = null;
   store.selectedSlot = null;

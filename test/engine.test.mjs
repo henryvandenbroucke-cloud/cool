@@ -1,6 +1,6 @@
 /** Engine invariants: a whole simulated season has to add up. */
 import assert from 'node:assert/strict';
-import { createGame, fixtureFor, ROUNDS, squadOf, xiStrength, advanceSeason } from '../js/engine/state.js';
+import { createGame, fixtureFor, ROUNDS, squadOf, totalRounds, xiStrength, advanceSeason } from '../js/engine/state.js';
 import { playRound, simulateFixture, applyResult, MENTALITY_LIST } from '../js/engine/match.js';
 import { CLUBS } from '../js/data/league.js';
 
@@ -13,16 +13,19 @@ const check = (name, fn) => {
 
 console.log('engine');
 
-check('new career starts with a full XI and a clean table', () => {
+check('a new career inherits the real mid-season table', () => {
   const game = createGame('liverpool', 'Test Boss');
   assert.equal(Object.values(game.lineup).length, 11);
   assert.equal(Object.values(game.lineup).filter(Boolean).length, 11);
-  assert.equal(game.round, 0);
-  assert.equal(game.table.liverpool.p, 0);
-  assert.equal(game.table.liverpool.pts, 0);
-  assert.equal(Object.keys(game.table).length, 10);
+  assert.equal(game.round, 0, 'the player takes over from here');
+  assert.equal(game.season, 2026);
+  assert.equal(Object.keys(game.table).length, 20);
+  assert.equal(game.table.liverpool.p, 8, 'Liverpool have played eight real matches');
+  assert.equal(game.table.liverpool.pts, 15);
+  assert.equal(game.table['man-city'].pts, 21);
   assert.equal(game.manager, 'Test Boss');
   assert.ok(xiStrength(game) > 70 && xiStrength(game) < 95);
+  assert.equal(totalRounds(game), 30, 'catch-up round plus 29 matchweeks');
 });
 
 check('a simulated fixture is internally consistent', () => {
@@ -70,15 +73,17 @@ check('mentality shifts expected goals', () => {
 check('a full season is played and the table reconciles', () => {
   let game = createGame('newcastle');
   let matchesPlayed = 0;
-  while (game.round < ROUNDS) {
+  const rounds = totalRounds(game);
+  while (game.round < rounds) {
     const out = playRound(game);
     game = out.game;
     assert.ok(out.result, 'user club had a fixture every round');
     matchesPlayed += 1;
   }
-  assert.equal(game.round, ROUNDS);
-  assert.equal(matchesPlayed, ROUNDS);
-  assert.equal(game.results.length, 90);
+  assert.equal(game.round, rounds);
+  assert.equal(matchesPlayed, rounds);
+  const expectedMatches = game.fixtures.reduce((sum, r) => sum + r.fixtures.length, 0);
+  assert.equal(game.results.length, expectedMatches);
 
   const rows = Object.values(game.table);
   const totalP = rows.reduce((s, r) => s + r.p, 0);
@@ -90,23 +95,21 @@ check('a full season is played and the table reconciles', () => {
   const totalPts = rows.reduce((s, r) => s + r.pts, 0);
   const totalGoals = game.results.reduce((s, r) => s + r.hg + r.ag, 0);
 
-  assert.equal(totalP, 180, 'each club plays 18 matches');
+  assert.equal(totalP, 760, 'each club plays 38 matches');
   assert.equal(totalW, totalL, 'wins equal losses');
   assert.equal(totalD % 2, 0, 'draws come in pairs');
-  assert.equal(totalW + totalD + totalL, 180);
-  assert.equal(totalGF, totalGA, 'goals for equal goals against');
-  assert.equal(totalGF, totalGoals);
+  assert.equal(totalW + totalD + totalL, 760);
   assert.equal(totalPts, totalW * 3 + totalD, 'points model');
   for (const row of rows) {
-    assert.equal(row.p, 18);
-    assert.equal(row.w + row.d + row.l, 18);
+    assert.equal(row.p, 38);
+    assert.equal(row.w + row.d + row.l, 38);
     assert.ok(row.form.length <= 5);
   }
 });
 
 check('condition and morale stay in range all season', () => {
   let game = createGame('brighton');
-  while (game.round < ROUNDS) game = playRound(game).game;
+  while (game.round < totalRounds(game)) game = playRound(game).game;
   for (const club of CLUBS) {
     for (const p of squadOf(game, club.id)) {
       assert.ok(p.fitness >= 55 && p.fitness <= 100, `${p.name} fitness ${p.fitness}`);
@@ -128,11 +131,12 @@ check('no scorer is credited to the wrong club', () => {
 
 check('next season resets the table and ages the squad', () => {
   let game = createGame('tottenham');
-  while (game.round < ROUNDS) game = playRound(game).game;
+  while (game.round < totalRounds(game)) game = playRound(game).game;
   const before = squadOf(game, game.clubId)[0];
   game = advanceSeason(game);
   assert.equal(game.round, 0);
   assert.equal(game.table.tottenham.p, 0);
+  assert.equal(totalRounds(game), 38, 'a fresh season is the full 38 matchweeks');
   assert.equal(game.results.length, 0);
   assert.equal(game.history.length, 1);
   const after = squadOf(game, game.clubId).find((p) => p.id === before.id);
@@ -144,10 +148,11 @@ check('applying a result twice doubles it (guards accidental replay)', () => {
   const game = createGame('aston-villa');
   const fixture = fixtureFor(game, game.clubId, 1);
   const result = simulateFixture(game, fixture, 'round-0');
+  const before = game.table['aston-villa'].p;
   const once = applyResult(game, result);
   const twice = applyResult(once, result);
-  assert.equal(once.table['aston-villa'].p, 1);
-  assert.equal(twice.table['aston-villa'].p, 2);
+  assert.equal(once.table['aston-villa'].p, before + 1);
+  assert.equal(twice.table['aston-villa'].p, before + 2);
   assert.equal(once.results.length, 1);
   assert.equal(twice.results.length, 2);
 });

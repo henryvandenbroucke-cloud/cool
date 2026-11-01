@@ -9,7 +9,9 @@ import { makeRng } from '../core/rng.js';
 import { FORMATIONS, DEFAULT_FORMATION, autoPick, slotStrength } from '../core/formations.js';
 
 export const ROUNDS = (CLUBS.length - 1) * 2; // single round-robin, played twice
-export const SAVE_KEY = 'touchline.save.v1';
+export const SAVE_KEY = 'touchline.save.v2';
+/** Matchweeks already played in the real world on the snapshot date. */
+export const MATCHWEEK = 9;
 
 /** Double round-robin fixtures via the circle method. */
 export function buildFixtures() {
@@ -70,22 +72,92 @@ export function emptyTable() {
   return table;
 }
 
+/**
+ * The real 2026/27 table on 1 November 2026: nine matchweeks played, then the
+ * season is yours from matchweek ten.
+ */
+export function realTable() {
+  const table = {};
+  for (const club of CLUBS) {
+    const [p, w, d, l, gf, ga] = club.record || [0, 0, 0, 0, 0, 0];
+    table[club.id] = {
+      clubId: club.id,
+      p, w, d, l, gf, ga,
+      pts: w * 3 + d,
+      form: (club.form || []).slice(-5),
+    };
+  }
+  return table;
+}
+
+/**
+ * The remaining 2026/27 calendar.
+ *
+ * Four clubs hold a game in hand after the real nine matchweeks (they have
+ * played eight). They meet each other in a midweek catch-up round first, then
+ * everyone plays the 29 matchweeks that are left. Clubs with a game in hand end
+ * on 30 matches from here, the rest on 29 — adding up to a 38-game season.
+ */
+export function buildRemaining(seed = 'remaining') {
+  const rng = makeRng(seed);
+  const base = buildFixtures();
+  const inHand = CLUBS.filter((c) => c.record[0] < MATCHWEEK).map((c) => c.id);
+  const rounds = [];
+
+  for (const matchday of base.slice(0, 29)) {
+    rounds.push({ round: rounds.length + 1, fixtures: matchday.fixtures });
+  }
+
+  // The four clubs holding a game in hand meet in a final midweek round.
+  if (inHand.length >= 2) {
+    const shuffled = rng.shuffle(inHand);
+    const fixtures = [];
+    for (let i = 0; i + 1 < shuffled.length; i += 2) {
+      fixtures.push({ home: shuffled[i], away: shuffled[i + 1], catchUp: true });
+    }
+    if (fixtures.length) rounds.push({ round: rounds.length + 1, fixtures, catchUp: true });
+  }
+  return rounds;
+}
+
+/** Every matchday the user's club appears in, from here to the end. */
+export function userRounds(game) {
+  return game.fixtures.filter((md) => md.fixtures.some((f) => f.home === game.clubId || f.away === game.clubId));
+}
+
+/** How many of the user's matchdays are done and how many are left. */
+export function userProgress(game) {
+  const mine = userRounds(game);
+  const done = mine.filter((md) => md.round <= game.round).length;
+  return { done, total: mine.length, next: mine[done] || null };
+}
+
+/** True once the user's club has nothing left to play. */
+export function seasonComplete(game) {
+  return !game.fixtures.some(
+    (matchday) => matchday.round > game.round && matchday.fixtures.some((f) => f.home === game.clubId || f.away === game.clubId),
+  );
+}
+
+export const totalRounds = (game) => game.fixtures.length;
+
 export function createGame(clubId, managerName = 'You') {
   const formation = DEFAULT_FORMATION;
   const squads = buildSquads();
   const lineup = autoPick(squads[clubId], formation);
   return {
-    version: 1,
+    version: 3,
     manager: managerName,
     clubId,
-    season: 2025,
+    season: 2026,
+    matchweek: MATCHWEEK,
     round: 0,
     formation,
     mentality: 'balanced',
     lineup,
     squads,
-    table: emptyTable(),
-    fixtures: buildFixtures(),
+    table: realTable(),
+    fixtures: buildRemaining(),
     results: [],
     history: [],
     lastMatch: null,
@@ -173,6 +245,7 @@ export function advanceSeason(game) {
   const next = {
     ...game,
     season: game.season + 1,
+    matchweek: 0,
     round: 0,
     table: emptyTable(),
     fixtures: buildFixtures(),

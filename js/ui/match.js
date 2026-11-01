@@ -1,6 +1,6 @@
 /** Match centre: pre-match hub, live commentary, post-match analysis. */
 import { CLUB_BY_ID, groupOf } from '../data/league.js';
-import { ROUNDS, fixtureFor, formationOf, selectedXI, squadOf, xiStrength, sortTable } from '../engine/state.js';
+import { fixtureFor, formationOf, seasonComplete, selectedXI, squadOf, totalRounds, xiStrength, sortTable } from '../engine/state.js';
 import { autoPick } from '../core/formations.js';
 import { MENTALITY_LIST } from '../engine/match.js';
 import { crest } from './crest.js';
@@ -44,7 +44,7 @@ function opponentIntel(game, opponentId) {
     <div class="stack">
       <div class="card">
         <div class="card__head">
-          <div class="card__title"><b>Opposition report</b></div>
+          <div class="card__title">Opposition report</div>
           <div class="card__spacer"></div>
           <span class="tag">${pos}${ordinal(pos)} in the table</span>
         </div>
@@ -126,7 +126,7 @@ export function renderMatch(store) {
   const game = store.game;
   const match = store.match;
 
-  if (game.round >= ROUNDS) return renderSeasonComplete(store);
+  if (seasonComplete(game)) return renderSeasonComplete(store);
 
   const fixture = fixtureFor(game, game.clubId, game.round + 1);
   if (!fixture) return `<div class="empty-state"><b>No fixture this round</b></div>`;
@@ -152,11 +152,11 @@ function renderPrematch(store, fixture) {
 
   return `
     <div class="section-head">
-      <h2>Matchday ${game.round + 1} <span class="serif italic dim" style="font-size:0.8em">of ${ROUNDS}</span></h2>
+      <h2>Matchday ${game.round + 1} <span class="serif italic dim" style="font-size:0.8em">of ${totalRounds(game)}</span></h2>
       <p>${CLUB_BY_ID[game.clubId].name} are ${myPos}${ordinal(myPos)} · ${isHome ? 'at home' : 'on the road'} at ${CLUB_BY_ID[fixture.home].ground}</p>
     </div>
 
-    <div class="prematch">
+    <div class="layout-split">
       <div class="stack">
         <div class="card">
           ${scoreboard(game, fixture)}
@@ -179,7 +179,7 @@ function renderPrematch(store, fixture) {
               </div>
             </div>
             <div class="row" style="margin-top:20px;gap:10px;flex-wrap:wrap">
-              <button class="btn btn--primary btn--lg" data-action="kickoff">Kick off <span aria-hidden="true">→</span></button>
+              <button class="btn btn--primary btn--lg" data-action="kickoff" data-tour="kickoff">Kick off <span aria-hidden="true">→</span></button>
               <button class="btn btn--ghost btn--lg" data-nav="tactics">Adjust tactics</button>
               <span class="tiny dim" style="margin-left:auto">${xi.filter((s) => s.player && s.player.fitness < 75).length} players below 75% condition</span>
             </div>
@@ -187,7 +187,7 @@ function renderPrematch(store, fixture) {
         </div>
 
         <div class="card">
-          <div class="card__head"><div class="card__title"><b>Your XI</b></div><div class="card__spacer"></div><span class="tag">${formation.name}</span></div>
+          <div class="card__head"><div class="card__title">Your XI</div><div class="card__spacer"></div><span class="tag">${formation.name}</span></div>
           <div class="card__body">
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:6px">
               ${xi
@@ -231,10 +231,10 @@ function renderLive(store, fixture) {
     <div class="stack">
       ${scoreboard(store.game, fixture, { score: `${score[0]} – ${score[1]}`, clock: clockLabel })}
 
-      <div class="grid-2 layout-live">
+      <div class="layout-live">
         <div class="card">
           <div class="card__head">
-            <div class="card__title"><b>Live commentary</b></div>
+            <div class="card__title">Live commentary</div>
             <div class="card__spacer"></div>
             <div class="seg" role="group" aria-label="Playback speed">
               ${[1, 2, 4].map((s) => `<button class="${match.speed === s ? 'is-active' : ''}" data-speed="${s}">${s}×</button>`).join('')}
@@ -263,7 +263,7 @@ function renderLive(store, fixture) {
 
         <div class="stack">
           <div class="card">
-            <div class="card__head"><div class="card__title"><b>Match stats</b></div></div>
+            <div class="card__head"><div class="card__title">Match stats</div></div>
             <div class="card__body stack">
               ${statLine('Possession', possession, 100 - possession, '%')}
               ${statLine('Shots', Math.round(result.stats.home.shots * (match.clock / 90)), Math.round(result.stats.away.shots * (match.clock / 90)))}
@@ -275,7 +275,7 @@ function renderLive(store, fixture) {
           </div>
 
           <div class="card">
-            <div class="card__head"><div class="card__title"><b>Goals</b></div></div>
+            <div class="card__head"><div class="card__title">Goals</div></div>
             <div class="card__body">
               ${
                 revealed.filter((e) => e.type === 'goal').length
@@ -338,7 +338,7 @@ function renderPost(store, result) {
       <div class="grid-2">
         <div class="card">
           <div class="card__head">
-            <div class="card__title"><b>${outcome}</b></div>
+            <div class="card__title">${outcome} · full time</div>
             <div class="card__spacer"></div>
             <span class="tag ${outcome === 'Won' ? 'tag--good' : outcome === 'Lost' ? 'tag--bad' : 'tag--warn'}">Matchday ${game.round}</span>
           </div>
@@ -358,7 +358,7 @@ function renderPost(store, result) {
         </div>
 
         <div class="card">
-          <div class="card__head"><div class="card__title"><b>Player ratings</b></div><div class="card__spacer"></div><span class="tag">Your XI</span></div>
+          <div class="card__head"><div class="card__title">Player ratings</div><div class="card__spacer"></div><span class="tag">Your XI</span></div>
           <div class="card__body">
             <div class="ratings">
               ${myRatings

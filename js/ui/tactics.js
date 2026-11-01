@@ -51,13 +51,13 @@ export function renderTactics(store) {
       <div class="card pitch-card">
         <div class="card__head" style="padding:4px 4px 14px">
           <div>
-            <div class="card__title"><b>${formation.name}</b> · ${club.name}</div>
+            <div class="card__title">${formation.name} · ${club.name}</div>
             <p class="tiny dim" style="margin-top:4px">Tap a shirt, then tap a teammate or a bench player to swap.</p>
           </div>
           <div class="card__spacer"></div>
           <button class="btn btn--sm btn--ghost" data-action="autopick">Auto pick</button>
         </div>
-        <div class="pitch" id="pitch">
+        <div class="pitch" id="pitch" data-tour="pitch">
           ${markings()}
           ${xi
             .map(
@@ -76,7 +76,7 @@ export function renderTactics(store) {
 
       <div class="stack">
         <div class="card">
-          <div class="card__head"><div class="card__title"><b>Shape</b></div><div class="card__spacer"></div><span class="tag tag--accent">${average.toFixed(1)} avg ovr</span></div>
+          <div class="card__head"><div class="card__title">Shape</div><div class="card__spacer"></div><span class="tag tag--accent">${average.toFixed(1)} avg ovr</span></div>
           <div class="card__body stack">
             <div class="form-toggle">
               ${FORMATION_LIST.map(
@@ -93,9 +93,9 @@ export function renderTactics(store) {
         </div>
 
         <div class="card">
-          <div class="card__head"><div class="card__title"><b>Mentality</b></div></div>
+          <div class="card__head"><div class="card__title">Mentality</div><div class="card__spacer"></div><span class="tag">Risk</span></div>
           <div class="card__body">
-            <div class="seg" style="width:100%;justify-content:space-between">
+            <div class="seg" style="width:100%;justify-content:space-between" data-tour="mentality">
               ${MENTALITY_LIST.map(
                 (m) => `<button class="${(game.mentality || 'balanced') === m.id ? 'is-active' : ''}" data-mentality="${m.id}" title="${m.blurb}">${m.name}</button>`,
               ).join('')}
@@ -116,7 +116,7 @@ export function renderTactics(store) {
 
         <div class="card">
           <div class="card__head">
-            <div class="card__title"><b>${selectedPlayer ? `Swapping ${escapeHtml(shortName(selectedPlayer.name))}` : 'Bench'}</b></div>
+            <div class="card__title">${selectedPlayer ? `Swapping ${escapeHtml(shortName(selectedPlayer.name))}` : 'Bench'}</div>
             <div class="card__spacer"></div>
             ${selectedPlayer ? '<button class="btn btn--sm btn--ghost" data-action="clear-selection">Cancel</button>' : `<span class="tag">${bench.length}</span>`}
           </div>
@@ -141,7 +141,7 @@ export function renderTactics(store) {
         </div>
 
         <div class="card ${warnings.length ? 'card--accent' : ''}">
-          <div class="card__head"><div class="card__title"><b>Team report</b></div></div>
+          <div class="card__head"><div class="card__title">Team report</div></div>
           <div class="card__body">
             ${
               warnings.length

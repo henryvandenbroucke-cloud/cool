@@ -1,11 +1,12 @@
 /** League table, plus the club's own fixture list. */
 import { CLUB_BY_ID } from '../data/league.js';
-import { ROUNDS, fixtureFor, sortTable } from '../engine/state.js';
+import { fixtureFor, sortTable, userProgress } from '../engine/state.js';
 import { crest } from './crest.js';
 import { formDots, escapeHtml } from './dom.js';
 
 export function renderTable(store) {
   const game = store.game;
+  const progress = userProgress(game);
   const rows = sortTable(game);
   const me = game.clubId;
   const played = game.table[me].p;
@@ -21,15 +22,15 @@ export function renderTable(store) {
 
   return `
     <div class="stats">
-      <div class="stat"><span class="stat__label">Position</span><span class="stat__value">${position}<span class="dim" style="font-size:14px">/10</span></span><span class="stat__sub">${game.table[me].pts} points</span></div>
+      <div class="stat"><span class="stat__label">Position</span><span class="stat__value">${position}<span class="dim" style="font-size:14px">/20</span></span><span class="stat__sub">${game.table[me].pts} points</span></div>
       <div class="stat"><span class="stat__label">Record</span><span class="stat__value" style="font-size:20px">${game.table[me].w}–${game.table[me].d}–${game.table[me].l}</span><span class="stat__sub">W–D–L</span></div>
       <div class="stat"><span class="stat__label">Goal difference</span><span class="stat__value" style="font-size:20px">${game.table[me].gf - game.table[me].ga > 0 ? '+' : ''}${game.table[me].gf - game.table[me].ga}</span><span class="stat__sub">${game.table[me].gf} for · ${game.table[me].ga} against</span></div>
-      <div class="stat"><span class="stat__label">Season progress</span><span class="stat__value" style="font-size:20px">${played}<span class="dim" style="font-size:13px">/${ROUNDS}</span></span><span class="stat__sub">${ROUNDS - played} matches left</span></div>
+      <div class="stat"><span class="stat__label">Season progress</span><span class="stat__value" style="font-size:20px">${progress.done}<span class="dim" style="font-size:13px">/${progress.total}</span></span><span class="stat__sub">${progress.total - progress.done} matchdays left</span></div>
     </div>
 
-    <div class="grid-2 layout-table">
+    <div class="layout-table">
       <div class="card">
-        <div class="card__head"><div class="card__title"><b>Premier League</b></div><div class="card__spacer"></div><span class="tag">Season ${game.season}</span></div>
+        <div class="card__head"><div class="card__title">Premier League</div><div class="card__spacer"></div><span class="tag">Season ${game.season}</span></div>
         <div class="card__body card__body--flush table-wrap">
           <table class="league">
             <thead>
@@ -71,7 +72,7 @@ export function renderTable(store) {
 
       <div class="stack">
         <div class="card">
-          <div class="card__head"><div class="card__title"><b>Coming up</b></div></div>
+          <div class="card__head"><div class="card__title">Coming up</div></div>
           <div class="card__body stack">
             ${
               fixtures.length
@@ -93,7 +94,7 @@ export function renderTable(store) {
         </div>
 
         <div class="card">
-          <div class="card__head"><div class="card__title"><b>Recent results</b></div></div>
+          <div class="card__head"><div class="card__title">Recent results</div></div>
           <div class="card__body stack">
             ${
               recent.length
@@ -110,7 +111,8 @@ export function renderTable(store) {
                       </div>`;
                     })
                     .join('')
-                : '<p class="tiny dim">No matches played yet.</p>'
+                : `<p class="tiny dim" style="margin-bottom:10px">Your career starts from matchweek 10. These are the real last-five results you inherit:</p>
+                   <div class="row" style="gap:6px;flex-wrap:wrap">${game.table[me].form.map((r) => `<span class="dot dot--${r}">${r}</span>`).join('')}</div>`
             }
           </div>
         </div>

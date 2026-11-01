@@ -3,7 +3,7 @@
  * markup without a browser. Catches undefined interpolations and broken states.
  */
 import assert from 'node:assert/strict';
-import { createGame, fixtureFor } from '../js/engine/state.js';
+import { createGame, fixtureFor, seasonComplete } from '../js/engine/state.js';
 import { applyResult, simulateFixture, playRound } from '../js/engine/match.js';
 import { renderLanding, renderDossier } from '../js/ui/landing.js';
 import { renderSquad, renderPlayerDrawer } from '../js/ui/squad.js';
@@ -49,7 +49,8 @@ check('landing page renders a card for every club', () => {
   const markup = renderLanding(store);
   noGarbage(markup, 'landing');
   for (const club of CLUBS) assert.ok(markup.includes(club.name), `missing ${club.name}`);
-  assert.ok(markup.includes('Take the'));
+  assert.ok(markup.includes('The season'));
+  assert.equal((markup.match(/data-club=/g) || []).length, 20);
   assert.ok(markup.includes('data-action="start"'));
   assert.ok(markup.includes('disabled'), 'start is disabled until a club is picked');
 });
@@ -59,7 +60,7 @@ check('landing dossier works for every club', () => {
   for (const club of CLUBS) {
     const markup = renderDossier(store, club.id);
     noGarbage(markup, `dossier ${club.id}`);
-    assert.ok(markup.includes(club.ground));
+    assert.ok(markup.includes(club.ground.split("'")[0]), `dossier missing ${club.id} ground`);
   }
 });
 
@@ -75,7 +76,7 @@ check('squad view lists every player and honours filters', () => {
   assert.equal((keepers.match(/data-player=/g) || []).length, gk.length);
 
   const byName = renderSquad({ ...store, sort: { key: 'name', dir: 1 } });
-  assert.ok(byName.indexOf('Alisson') < byName.indexOf('Salah'));
+  assert.ok(byName.indexOf('Alisson') < byName.indexOf('Florian Wirtz'));
 });
 
 check('player drawer shows attributes and season stats', () => {
@@ -144,7 +145,8 @@ check('league table reflects results and highlights the club', () => {
   noGarbage(markup, 'table');
   assert.ok(markup.includes('Premier League'));
   assert.ok(markup.includes('is-me'));
-  assert.equal((markup.match(/<tr class="[^"]*zone-/g) || []).length >= 3, true);
+  assert.ok((markup.match(/<tr class="[^"]*zone-/g) || []).length >= 3);
+  assert.equal((markup.match(/<tr /g) || []).length, 20);
 });
 
 check('shell chrome renders with a live match and a finished season', () => {
@@ -152,17 +154,18 @@ check('shell chrome renders with a live match and a finished season', () => {
   noGarbage(renderNav(store) + renderTopbar(store) + renderRail(store), 'shell');
   assert.ok(renderTopbar({ ...store, view: 'match' }).includes('Matchday'));
   let finished = store.game;
-  while (finished.round < 18) finished = playRound(finished).game;
+  while (!seasonComplete(finished)) finished = playRound(finished).game;
   noGarbage(renderRail({ ...store, game: finished }), 'rail at season end');
   const seasonEnd = renderMatch({ ...store, game: finished });
-  assert.ok(seasonEnd.includes('Season 2025 complete'));
+  assert.ok(seasonEnd.includes('Season 2026 complete'));
 });
 
-check('crests render for every club', () => {
+check('real crest images render for every club', () => {
   for (const club of CLUBS) {
-    const svg = crest(club.id, 32);
-    assert.ok(svg.includes('<svg'), `${club.id} crest`);
-    assert.ok(svg.includes(club.short), `${club.id} code`);
+    const markup = crest(club.id, 32);
+    assert.ok(markup.includes(`assets/crests/${club.id}.png`), `${club.id} crest path`);
+    assert.ok(markup.includes(club.short), `${club.id} fallback code`);
+    assert.ok(markup.includes(`alt="${club.name} crest"`) || markup.includes(club.name.split('&')[0]), `${club.id} alt text`);
   }
 });
 

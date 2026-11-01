@@ -1,7 +1,7 @@
 /** TOUCHLINE — boot, routing, match clock and all interaction handlers. */
 import { CLUB_BY_ID } from './data/league.js';
 import { FORMATIONS, autoPick } from './core/formations.js';
-import { ROUNDS, fixtureFor, squadOf } from './engine/state.js';
+import { fixtureFor, seasonComplete, squadOf, totalRounds } from './engine/state.js';
 import { applyResult, simulateFixture } from './engine/match.js';
 import { store, load, save, clearSave, newCareer, navigate, startNextSeason, subscribe } from './store.js';
 import { renderLanding, renderDossier } from './ui/landing.js';
@@ -10,6 +10,8 @@ import { renderSquad, renderPlayerDrawer } from './ui/squad.js';
 import { renderTactics, mountTactics } from './ui/tactics.js';
 import { renderMatch } from './ui/match.js';
 import { renderTable } from './ui/table.js';
+import { renderGuide } from './ui/guide.js';
+import { startTour, tourAfterRender, tourSeen, tourRunning, handleTourKey, endTour } from './ui/tour.js';
 
 const root = document.querySelector('#app');
 const TICK_MS = 150;
@@ -47,6 +49,7 @@ function render() {
 
   if (store.view === 'tactics') mountTactics(root, store, actions);
   if (store.view === 'landing') bindLanding();
+  tourAfterRender(store, tourActions);
   window.scrollTo(0, scrollY);
   const rail = document.querySelector('.rail');
   if (rail) rail.scrollTop = railScroll;
@@ -81,12 +84,23 @@ function renderView() {
       return renderMatch(store);
     case 'table':
       return renderTable(store);
+    case 'guide':
+      return renderGuide(store);
     default:
       return renderSquad(store);
   }
 }
 
 /* ---------------------------------------------------------------- actions  */
+
+const tourActions = {
+  navigate(view) {
+    store.view = view;
+    store.selectedSlot = null;
+    store.drawerPlayerId = null;
+    render();
+  },
+};
 
 const actions = {
   selectSlot(slotId) {
@@ -185,7 +199,7 @@ function finalizeMatch() {
       next = applyResult(next, simulateFixture(next, fixture, `round-${next.round}`));
     }
   }
-  next = { ...next, round: Math.min(ROUNDS, next.round + 1) };
+  next = { ...next, round: Math.min(totalRounds(next), next.round + 1) };
   store.game = next;
   match.finished = true;
   match.clock = 90;
@@ -323,6 +337,10 @@ document.addEventListener('click', (event) => {
 });
 
 document.addEventListener('keydown', (event) => {
+  if (handleTourKey(event)) {
+    event.preventDefault();
+    return;
+  }
   if (event.key === 'Escape' && store.drawerPlayerId) {
     store.drawerPlayerId = null;
     render();
@@ -340,6 +358,7 @@ function handleAction(name) {
       const manager = (input?.value || store.managerName || '').trim() || 'The Gaffer';
       newCareer(store.pickedClub, manager);
       toast(`You're in charge at ${CLUB_BY_ID[store.pickedClub].name}`);
+      if (!tourSeen()) setTimeout(() => startTour(store, tourActions, 0), 420);
       break;
     }
     case 'continue-career':
@@ -348,6 +367,7 @@ function handleAction(name) {
         store.loadedSave = null;
         store.view = 'squad';
         render();
+        if (!tourSeen()) setTimeout(() => startTour(store, tourActions, 0), 420);
       }
       break;
     case 'forget-career':
@@ -359,6 +379,7 @@ function handleAction(name) {
       break;
     case 'new-career':
       if (!window.confirm('Abandon this career and pick a new club? Your save will be deleted.')) return;
+      if (tourRunning()) endTour(false);
       clearInterval(store.timer);
       clearSave();
       store.game = null;
@@ -367,6 +388,9 @@ function handleAction(name) {
       store.pickedClub = null;
       store.view = 'squad';
       render();
+      break;
+    case 'start-tour':
+      startTour(store, tourActions, 0);
       break;
     case 'autopick': {
       const lineup = autoPick(squadOf(store.game, store.game.clubId), store.game.formation);
@@ -407,6 +431,8 @@ function handleAction(name) {
 /* ------------------------------------------------------------------- boot  */
 
 subscribe(render);
+
+if (!store.loadedSave) store.loadedSave = null;
 
 const saved = load();
 store.loadedSave = saved;

@@ -1,8 +1,8 @@
 {
   "name": "touchline",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "TOUCHLINE — a browser football management game. Pick a club, set your eleven, play every matchday. Vanilla JS, no build step, no runtime dependencies.",
+  "description": "TOUCHLINE — the real 2026/27 Premier League as a browser management game. Inherit the current table, pick your eleven, play out the season. Vanilla JS, no build step, no runtime dependencies.",
   "type": "module",
   "scripts": {
     "start": "node server.mjs",

@@ -9,7 +9,7 @@
 import { CLUB_BY_ID, groupOf } from '../data/league.js';
 import { makeRng } from '../core/rng.js';
 import { autoPick, slotStrength } from '../core/formations.js';
-import { formationOf, squadOf, xiStrength, ROUNDS } from './state.js';
+import { formationOf, squadOf, totalRounds, xiStrength } from './state.js';
 
 const MENTALITY = {
   defensive: { name: 'Defensive', for: 0.86, against: 0.84, blurb: 'Sit deep, soak pressure, strike on the break.' },
@@ -342,6 +342,32 @@ export function applyResult(game, result) {
   };
 }
 
+/**
+ * Skip any matchday the user's club is not involved in (the midweek catch-up
+ * round only features the four clubs with a game in hand).
+ */
+export function advanceToUserFixture(game) {
+  let next = game;
+  while (next.round < totalRounds(next)) {
+    const matchday = next.fixtures.find((f) => f.round === next.round + 1);
+    if (!matchday) break;
+    const involved = matchday.fixtures.some((f) => f.home === next.clubId || f.away === next.clubId);
+    if (involved) break;
+    for (const fixture of matchday.fixtures) next = applyResult(next, simulateFixture(next, fixture, `round-${next.round}`));
+    next = { ...next, round: next.round + 1 };
+  }
+  return next;
+}
+
+/** Simulate one whole matchday without the user (used by the rest-day screen). */
+export function simulateRound(game) {
+  const matchday = game.fixtures.find((f) => f.round === game.round + 1);
+  if (!matchday) return game;
+  let next = game;
+  for (const fixture of matchday.fixtures) next = applyResult(next, simulateFixture(next, fixture, `round-${next.round}`));
+  return { ...next, round: Math.min(totalRounds(next), next.round + 1) };
+}
+
 export function playRound(game) {
   const matchday = game.fixtures.find((f) => f.round === game.round + 1);
   if (!matchday) return game;
@@ -352,7 +378,7 @@ export function playRound(game) {
     if (fixture.home === next.clubId || fixture.away === next.clubId) userResult = result;
     next = applyResult(next, result);
   }
-  return { game: { ...next, round: Math.min(ROUNDS, next.round + 1) }, result: userResult };
+  return { game: { ...next, round: Math.min(totalRounds(next), next.round + 1) }, result: userResult };
 }
 
 export { groupOf };

@@ -1,5 +1,11 @@
 /** Data integrity: squads, formations and fixtures must be coherent. */
 import assert from 'node:assert/strict';
+import { existsSync, statSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve as resolvePath } from 'node:path';
+
+const root = resolvePath(dirname(fileURLToPath(import.meta.url)), '..');
+const resolve = (...parts) => resolvePath(root, ...parts);
 import { CLUBS, CLUB_BY_ID, groupOf } from '../js/data/league.js';
 import { FORMATIONS, FORMATION_LIST, autoPick } from '../js/core/formations.js';
 import { buildFixtures, buildSquads, ROUNDS } from '../js/engine/state.js';
@@ -13,10 +19,40 @@ const check = (name, fn) => {
 
 console.log('data');
 
-check('ten clubs with unique ids', () => {
-  assert.equal(CLUBS.length, 10);
-  assert.equal(new Set(CLUBS.map((c) => c.id)).size, 10);
-  assert.equal(Object.keys(CLUB_BY_ID).length, 10);
+check('twenty clubs with unique ids', () => {
+  assert.equal(CLUBS.length, 20);
+  assert.equal(new Set(CLUBS.map((c) => c.id)).size, 20);
+  assert.equal(Object.keys(CLUB_BY_ID).length, 20);
+});
+
+check('every club has a real crest on disk', () => {
+  for (const club of CLUBS) {
+    const file = resolve(root, 'assets/crests', `${club.id}.png`);
+    assert.ok(existsSync(file), `missing crest for ${club.id}`);
+    assert.ok(statSync(file).size > 3000, `crest too small for ${club.id}`);
+  }
+});
+
+check('real 2026/27 records are internally consistent', () => {
+  for (const club of CLUBS) {
+    const [p, w, d, l] = club.record;
+    assert.equal(w + d + l, p, `${club.name} record does not add up`);
+    assert.equal(club.form.length, 5, `${club.name} form length`);
+    assert.ok(club.capacity > 10000, `${club.name} capacity`);
+    assert.ok(['GK'].every((pos) => club.squad.some((pl) => pl.pos === pos)));
+  }
+  const totalPlayed = CLUBS.reduce((sum, c) => sum + c.record[0], 0);
+  assert.equal(totalPlayed, 176, '88 real matches = 176 team-games');
+  const totalGoals = CLUBS.reduce((sum, c) => sum + c.record[4], 0);
+  const totalAgainst = CLUBS.reduce((sum, c) => sum + c.record[5], 0);
+  assert.equal(totalGoals, totalAgainst, 'goals for must equal goals against league-wide');
+  assert.equal(totalGoals, 241, 'the real 2026/27 goal tally after nine matchweeks');
+});
+
+check('every club fields a real manager or an explicit unknown', () => {
+  for (const club of CLUBS) {
+    assert.ok(typeof club.manager === 'string' && club.manager.length > 0, `${club.name} manager`);
+  }
 });
 
 check('every club fields a keeper and at least fifteen players', () => {
@@ -67,10 +103,10 @@ check('auto-pick never selects the same player twice', () => {
 check('fixtures are a complete double round-robin', () => {
   const rounds = buildFixtures();
   assert.equal(rounds.length, ROUNDS);
-  assert.equal(rounds.length, 18);
+  assert.equal(rounds.length, 38);
   const seen = new Map();
   for (const round of rounds) {
-    assert.equal(round.fixtures.length, 5);
+    assert.equal(round.fixtures.length, 10);
     const playing = new Set();
     for (const f of round.fixtures) {
       assert.notEqual(f.home, f.away);
@@ -80,9 +116,9 @@ check('fixtures are a complete double round-robin', () => {
       const key = `${f.home}>${f.away}`;
       seen.set(key, (seen.get(key) || 0) + 1);
     }
-    assert.equal(playing.size, 10, 'not every club plays each round');
+    assert.equal(playing.size, 20, 'not every club plays each round');
   }
-  assert.equal(seen.size, 90, 'expected 90 distinct fixtures');
+  assert.equal(seen.size, 380, 'expected 380 distinct fixtures');
   for (const count of seen.values()) assert.equal(count, 1, 'fixture repeated');
 });
 

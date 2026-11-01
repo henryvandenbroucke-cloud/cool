@@ -64,16 +64,17 @@ export function renderSquad(store) {
         <span class="stat__sub">${fitLabel(totals.fitness)} squad average</span>
       </div>
       <div class="stat">
-        <span class="stat__label">Momentum</span>
+        <span class="stat__label">Form</span>
         <span class="stat__value" style="color:var(--${mood.tone === 'good' ? 'good' : mood.tone === 'bad' ? 'bad' : 'ink'})">${mood.label}</span>
-        <span class="stat__sub">${game.table[game.clubId].w}W ${game.table[game.clubId].d}D ${game.table[game.clubId].l}L this season</span>
+        <span class="stat__sub">${game.table[game.clubId].w}W ${game.table[game.clubId].d}D ${game.table[game.clubId].l}L · ${game.table[game.clubId].pts} pts</span>
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" data-tour="squad-table">
       <div class="card__head">
         <div>
-          <div class="card__title"><b>First team</b></div>
+          <div class="card__title">First team</div>
+          <div class="card__sub">Tap a row for the full player profile</div>
         </div>
         <div class="card__spacer"></div>
         <div class="filters">
