@@ -1,5 +1,7 @@
 # Explainer Video: Plan Phase
 
+> **Update (v2):** the format now follows the EverythingProfessor channel: a 10-item catalog, a circle-grid thumbnail, about 10 minutes, voiced by you. See [CHANNEL-RESEARCH.md](CHANNEL-RESEARCH.md) and the final [SCRIPT.md](SCRIPT.md). The Inspection Paradox stays as the hidden link behind half the items, and the reveal at the end is the payoff. Sections below are the original v1 plan, kept for the research and sources.
+
 **Status:** PLAN ONLY. Nothing gets animated, voiced or rendered until you say go.
 **Working title:** *The Invisible Law That Makes Your Life Feel Worse Than It Is*
 **Runtime:** about 4:15 · 16:9, 1920×1080, 30 fps · plus a 9:16 Short cut from the hook
